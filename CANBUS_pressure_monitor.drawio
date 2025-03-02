@@ -33,7 +33,7 @@
         <mxCell id="-NDfYkJBVCp2eSV50RaS-6" value="MCP2515" style="whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
           <mxGeometry x="510" y="830" width="80" height="80" as="geometry" />
         </mxCell>
-        <mxCell id="-NDfYkJBVCp2eSV50RaS-7" value="SPI1&lt;div&gt;GPIO 08 - 11&lt;/div&gt;" style="edgeStyle=elbowEdgeStyle;elbow=horizontal;endArrow=classic;html=1;curved=0;rounded=0;endSize=8;startSize=8;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=classic;startFill=1;" edge="1" parent="1" source="-NDfYkJBVCp2eSV50RaS-1" target="-NDfYkJBVCp2eSV50RaS-6">
+        <mxCell id="-NDfYkJBVCp2eSV50RaS-7" value="SPI1&lt;div&gt;GPIO 08, 10 - 11&lt;/div&gt;" style="edgeStyle=elbowEdgeStyle;elbow=horizontal;endArrow=classic;html=1;curved=0;rounded=0;endSize=8;startSize=8;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=classic;startFill=1;" edge="1" parent="1" source="-NDfYkJBVCp2eSV50RaS-1" target="-NDfYkJBVCp2eSV50RaS-6">
           <mxGeometry width="50" height="50" relative="1" as="geometry">
             <mxPoint x="195" y="374" as="sourcePoint" />
             <mxPoint x="320" y="260" as="targetPoint" />
@@ -42,10 +42,10 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="-NDfYkJBVCp2eSV50RaS-8" value="Analog I" style="whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+        <mxCell id="-NDfYkJBVCp2eSV50RaS-8" value="Temperature&lt;div&gt;1-4&lt;/div&gt;" style="whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
           <mxGeometry x="680" y="300" width="80" height="80" as="geometry" />
         </mxCell>
-        <mxCell id="-NDfYkJBVCp2eSV50RaS-9" value="MUX" style="whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+        <mxCell id="-NDfYkJBVCp2eSV50RaS-9" value="Temperature&lt;div&gt;5-8&lt;/div&gt;" style="whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
           <mxGeometry x="680" y="410" width="80" height="80" as="geometry" />
         </mxCell>
         <mxCell id="-NDfYkJBVCp2eSV50RaS-10" value="Analog Input&lt;div&gt;1-4&lt;/div&gt;" style="whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
@@ -54,16 +54,16 @@
         <mxCell id="-NDfYkJBVCp2eSV50RaS-11" value="Analog Input&lt;div&gt;5-8&lt;/div&gt;" style="whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
           <mxGeometry x="680" y="630" width="80" height="80" as="geometry" />
         </mxCell>
-        <mxCell id="-NDfYkJBVCp2eSV50RaS-12" value="ANA" style="edgeStyle=elbowEdgeStyle;elbow=horizontal;endArrow=none;html=1;curved=0;rounded=0;endSize=8;startSize=8;exitX=1;exitY=0.75;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=classic;startFill=1;endFill=0;" edge="1" parent="1" source="-NDfYkJBVCp2eSV50RaS-3" target="-NDfYkJBVCp2eSV50RaS-11">
+        <mxCell id="-NDfYkJBVCp2eSV50RaS-12" value="ANA" style="edgeStyle=elbowEdgeStyle;elbow=horizontal;endArrow=none;html=1;curved=0;rounded=0;endSize=8;startSize=8;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=classic;startFill=1;endFill=0;" edge="1" parent="1" source="-NDfYkJBVCp2eSV50RaS-3" target="-NDfYkJBVCp2eSV50RaS-11">
           <mxGeometry width="50" height="50" relative="1" as="geometry">
             <mxPoint x="520" y="794" as="sourcePoint" />
             <mxPoint x="645" y="680" as="targetPoint" />
             <Array as="points">
-              <mxPoint x="610" y="570" />
+              <mxPoint x="560" y="580" />
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="-NDfYkJBVCp2eSV50RaS-13" value="ANA" style="edgeStyle=elbowEdgeStyle;elbow=horizontal;endArrow=none;html=1;curved=0;rounded=0;endSize=8;startSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=classic;startFill=1;endFill=0;" edge="1" parent="1" source="-NDfYkJBVCp2eSV50RaS-3" target="-NDfYkJBVCp2eSV50RaS-10">
+        <mxCell id="-NDfYkJBVCp2eSV50RaS-13" value="ANA" style="edgeStyle=elbowEdgeStyle;elbow=horizontal;endArrow=none;html=1;curved=0;rounded=0;endSize=8;startSize=8;exitX=1;exitY=0.75;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=classic;startFill=1;endFill=0;" edge="1" parent="1" source="-NDfYkJBVCp2eSV50RaS-3" target="-NDfYkJBVCp2eSV50RaS-10">
           <mxGeometry width="50" height="50" relative="1" as="geometry">
             <mxPoint x="580" y="330" as="sourcePoint" />
             <mxPoint x="680" y="530" as="targetPoint" />
@@ -72,13 +72,14 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="-NDfYkJBVCp2eSV50RaS-14" value="IN1" style="edgeStyle=elbowEdgeStyle;elbow=horizontal;endArrow=none;html=1;curved=0;rounded=0;endSize=8;startSize=8;exitX=1;exitY=0.75;exitDx=0;exitDy=0;entryX=0;entryY=0.75;entryDx=0;entryDy=0;startArrow=classic;startFill=1;endFill=0;" edge="1" parent="1" source="-NDfYkJBVCp2eSV50RaS-2" target="-NDfYkJBVCp2eSV50RaS-3">
+        <mxCell id="-NDfYkJBVCp2eSV50RaS-14" value="IN0" style="edgeStyle=elbowEdgeStyle;elbow=horizontal;endArrow=none;html=1;curved=0;rounded=0;endSize=8;startSize=8;exitX=1;exitY=0.75;exitDx=0;exitDy=0;entryX=0;entryY=0.75;entryDx=0;entryDy=0;startArrow=classic;startFill=1;endFill=0;" edge="1" parent="1" source="-NDfYkJBVCp2eSV50RaS-2" target="-NDfYkJBVCp2eSV50RaS-3">
           <mxGeometry width="50" height="50" relative="1" as="geometry">
             <mxPoint x="400" y="480" as="sourcePoint" />
             <mxPoint x="500" y="590" as="targetPoint" />
             <Array as="points">
               <mxPoint x="460" y="470" />
             </Array>
+            <mxPoint as="offset" />
           </mxGeometry>
         </mxCell>
         <mxCell id="-NDfYkJBVCp2eSV50RaS-15" value="CSn&lt;div&gt;GPIO04&lt;/div&gt;" style="edgeStyle=elbowEdgeStyle;elbow=horizontal;endArrow=classic;html=1;curved=0;rounded=0;endSize=8;startSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.75;entryDx=0;entryDy=0;startArrow=classic;startFill=1;" edge="1" parent="1" source="-NDfYkJBVCp2eSV50RaS-1" target="-NDfYkJBVCp2eSV50RaS-2">
@@ -118,6 +119,62 @@
             <mxPoint x="542" y="835" as="targetPoint" />
             <Array as="points">
               <mxPoint x="161" y="760" />
+            </Array>
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="-NDfYkJBVCp2eSV50RaS-20" value="Temp" style="edgeStyle=elbowEdgeStyle;elbow=horizontal;endArrow=none;html=1;curved=0;rounded=0;endSize=8;startSize=8;exitX=1;exitY=0.25;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=classic;startFill=1;endFill=0;" edge="1" parent="1" source="-NDfYkJBVCp2eSV50RaS-3" target="-NDfYkJBVCp2eSV50RaS-8">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="580" y="230" as="sourcePoint" />
+            <mxPoint x="680" y="340" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="630" y="350" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="-NDfYkJBVCp2eSV50RaS-21" value="Temp" style="edgeStyle=elbowEdgeStyle;elbow=horizontal;endArrow=none;html=1;curved=0;rounded=0;endSize=8;startSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=classic;startFill=1;endFill=0;" edge="1" parent="1" source="-NDfYkJBVCp2eSV50RaS-3" target="-NDfYkJBVCp2eSV50RaS-9">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="590" y="450" as="sourcePoint" />
+            <mxPoint x="690" y="360" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="630" y="440" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="-NDfYkJBVCp2eSV50RaS-22" value="Pressure" style="whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+          <mxGeometry x="680" y="100" width="80" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="-NDfYkJBVCp2eSV50RaS-23" value="Diff Pressure" style="whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+          <mxGeometry x="680" y="200" width="80" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="-NDfYkJBVCp2eSV50RaS-24" value="IN2" style="edgeStyle=elbowEdgeStyle;elbow=horizontal;endArrow=none;html=1;curved=0;rounded=0;endSize=8;startSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=classic;startFill=1;endFill=0;" edge="1" parent="1" source="-NDfYkJBVCp2eSV50RaS-2" target="-NDfYkJBVCp2eSV50RaS-23">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="570" y="239.58" as="sourcePoint" />
+            <mxPoint x="670" y="239.58" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="480" y="360" />
+            </Array>
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="-NDfYkJBVCp2eSV50RaS-25" value="IN3" style="edgeStyle=elbowEdgeStyle;elbow=horizontal;endArrow=none;html=1;curved=0;rounded=0;endSize=8;startSize=8;exitX=1;exitY=0.25;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=classic;startFill=1;endFill=0;" edge="1" parent="1" source="-NDfYkJBVCp2eSV50RaS-2" target="-NDfYkJBVCp2eSV50RaS-22">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="380" y="340" as="sourcePoint" />
+            <mxPoint x="660" y="130" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="460" y="250" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="-NDfYkJBVCp2eSV50RaS-26" value="Functions:&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;RP2030 generates an 8MHz clock for the MCP2515 on GPIO7&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;RP2030 samples ADC128S022 every second.&amp;nbsp; Pipelining the data into the RP2030.&amp;nbsp; There are total of 8 ADC inputs.&amp;nbsp; ADC input 0 is connected to a MUX (CD74HC4067) which is a 16 channel MUX.&amp;nbsp; In total there are 23 sampled channels of ADC data.&amp;nbsp; MUX control lines MUX_S0 thru S3 connected to GPIO16 thru 19 of the RP2030, and mux chip select connected to GPIO14.&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;The ADC is connected to SPI0 (GPIO2 thru 4) and ADC chip select is connected to GPIO5.&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;An SDCard connection is also on SPIO0 and the SDCard chip select line is connected to GPIO1.&amp;nbsp;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;The Data sampled by the RP2030 should be logged into the SDCard once per secon.&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;All analog data sampled by the RP2030 should be put into a CAN stream and sent twice per second.&amp;nbsp; The CAN connections are over SPI1 (GPIO8 thru GPIO11), with GPIO9 being the CAN CSn pin.&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="620" y="730" width="210" height="500" as="geometry" />
+        </mxCell>
+        <mxCell id="-NDfYkJBVCp2eSV50RaS-27" value="CSn&lt;div&gt;GPIO 09&lt;/div&gt;" style="edgeStyle=elbowEdgeStyle;elbow=horizontal;endArrow=classic;html=1;curved=0;rounded=0;endSize=8;startSize=8;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.75;entryDx=0;entryDy=0;startArrow=classic;startFill=1;" edge="1" parent="1" source="-NDfYkJBVCp2eSV50RaS-1" target="-NDfYkJBVCp2eSV50RaS-6">
+          <mxGeometry x="0.3138" width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="110" y="700" as="sourcePoint" />
+            <mxPoint x="492" y="905" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="94" y="770" />
             </Array>
             <mxPoint as="offset" />
           </mxGeometry>
