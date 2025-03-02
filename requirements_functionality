@@ -1,0 +1,14 @@
+Functions:
+
+RP2030 generates an 8MHz clock for the MCP2515 on GPIO7
+
+RP2030 samples ADC128S022 every second.  Pipelining the data into the RP2030.  There are total of 8 ADC inputs.  ADC input 0 is connected to a MUX (CD74HC4067) which is a 16 channel MUX.  In total there are 23 sampled channels of ADC data.  MUX control lines MUX_S0 thru S3 connected to GPIO16 thru 19 of the RP2030, and mux chip select connected to GPIO14.
+
+The ADC is connected to SPI0 (GPIO2 thru 4) and ADC chip select is connected to GPIO5.
+
+An SDCard connection is also on SPIO0 and the SDCard chip select line is connected to GPIO1. 
+
+The Data sampled by the RP2030 should be logged into the SDCard once per secon.
+
+All analog data sampled by the RP2030 should be put into a CAN stream and sent twice per second.  The CAN connections are over SPI1 (GPIO8 thru GPIO11), with GPIO9 being the CAN CSn pin.
+
