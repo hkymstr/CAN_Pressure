@@ -1,5 +1,5 @@
 """
-Data Acquisition System for Raspberry Pi Pico
+Data Acquisition System for Raspberry Pi Pico in MicroPython
 - 8MHz clock generation for MCP2515
 - ADC128S022 sampling via SPI0
 - CD74HC4067 16-channel MUX control 
