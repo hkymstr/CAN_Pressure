@@ -1,14 +1,130 @@
 Functions:
+The purpose of this device is to read telemetry
+All telemetry channels shall be read at a rate of 5Hz (for all 23 telemetry channels)
 
-RP2030 generates an 8MHz clock for the MCP2515 on GPIO7
+Each telemetry point will use 2 bytes of the CAN packet, a total of 4 telemetry points will be trasmitted per CAN ID
+The CAN telemetry will be transmitted over 6 CAN IDs (0x200 thru 0x205)
+All analog data sampled by the RP2030 should be put into a CAN stream and sent twice per second.  
+Whenever CAN data is streamed out this data should be logged in the following format:  Time Stamp,ID,Extended,Bus,LEN,D1,D2,D3,D4,D5,D6,D7,D8
 
-RP2030 samples ADC128S022 every second.  Pipelining the data into the RP2030.  There are total of 8 ADC inputs.  ADC input 0 is connected to a MUX (CD74HC4067) which is a 16 channel MUX.  In total there are 23 sampled channels of ADC data.  MUX control lines MUX_S0 thru S3 connected to GPIO16 thru 19 of the RP2030, and mux chip select connected to GPIO14.
+The default configuration for the ports are:
+UART:  115200bps
+CAN: 500kbps
 
+A menu driven interface that allows the user to select the following options
+1. Update the Realtime clock time
+2. Update the CANbus transmit rate:
+125 kbps.
+250 kbps.
+500 kbps (Standard for most automotive applications)
+1000 kbps (1 mbps)
+
+
+OBD File:
+Provide an OBD file for all 23 telemetry fields
+
+UART Interface:
+A UART interface is connected to GPIO16 and GPIO17
+Allows 
+
+Realtime Clock:
+A realtime clock is implmented on this board.
+This can be set thru the UART interface thru a command prompt
+
+ADC Interface:
+RP2030 interfaces to an ADC128S022.
+The interface to the ADC is pipelined into the RP2030.  
 The ADC is connected to SPI0 (GPIO2 thru 4) and ADC chip select is connected to GPIO5.
+There are total of 8 ADC inputs.  
+ADC input 0 is connected to a MUX (CD74HC4067) which is a 16 channel MUX.  
+MUX control lines MUX_S0 thru S3 connected to GPIO16 thru 19 of the RP2030, and mux chip select connected to GPIO14.
+ADC inputs 1-7 are not MUX'd
+In total there are 23 sampled channels of ADC data.
+The RP2030 should read all 23 channels at a rate of 5Hz
+Each telemetry field should be stored as 16bit integer
 
-An SDCard connection is also on SPIO0 and the SDCard chip select line is connected to GPIO1. 
+CAN Interface:
+RP2030 generates an 8MHz clock on RP2030 GPIO07 for the MCP2515
 
-The Data sampled by the RP2030 should be logged into the SDCard once per secon.
+The CAN connections are over SPI1 (GPIO08, GPIO10, GPIO11), with GPIO09 being the CAN CSn pin.
 
-All analog data sampled by the RP2030 should be put into a CAN stream and sent twice per second.  The CAN connections are over SPI1 (GPIO8 thru GPIO11), with GPIO9 being the CAN CSn pin.
+SD Card Interface:
+An SDCard connection is also on SPIO0 and the SDCard chip select line is connected to GPIO01. 
+The Data sent over the CAN interface should be logged into the SDCard once per second.
+A time stamp should be included in the log
 
+MicroPython style guide for Raspberry Pi 2030:
+
+# Import standard libraries first, followed by third-party libraries
+import time
+import machine
+import uos
+
+# Constants should be in UPPER_CASE
+LED_PIN = 25
+DELAY_MS = 500
+
+# Class names should use CamelCase
+class LedController:
+    def __init__(self, pin_number):
+        # Initialize hardware with descriptive variable names
+        self.led = machine.Pin(pin_number, machine.Pin.OUT)
+        self.state = False
+    
+    def toggle(self):
+        # Short, descriptive method names
+        self.state = not self.state
+        self.led.value(self.state)
+    
+    def blink(self, count, delay_ms=DELAY_MS):
+        # Add docstrings for non-obvious functions
+        """
+        Blink the LED a specified number of times.
+        
+        Args:
+            count: Number of blinks
+            delay_ms: Delay between blinks in milliseconds
+        """
+        for _ in range(count):
+            self.toggle()
+            time.sleep_ms(delay_ms)
+            self.toggle()
+            time.sleep_ms(delay_ms)
+
+
+# Function names should use snake_case
+def read_sensor(pin, samples=10):
+    """Read and average multiple ADC samples."""
+    adc = machine.ADC(pin)
+    total = 0
+    
+    for _ in range(samples):
+        total += adc.read_u16()
+        time.sleep_ms(10)
+    
+    return total // samples
+
+
+# Main execution block with if __name__ == "__main__" guard
+if __name__ == "__main__":
+    # Initialize components
+    led_controller = LedController(LED_PIN)
+    sensor_pin = 26
+    
+    try:
+        while True:
+            # Readable loop with clear purpose
+            sensor_value = read_sensor(sensor_pin)
+            
+            if sensor_value > 30000:
+                led_controller.blink(3)
+            
+            time.sleep_ms(1000)
+    
+    except KeyboardInterrupt:
+        # Clean handling of interrupts
+        print("Program stopped by user")
+    finally:
+        # Clean up resources
+        led_controller.led.value(0)
+        print("Program ended")
