@@ -23,6 +23,30 @@ A menu driven interface that allows the user to select the following options
 OBD File:
 Provide an OBD file for all 23 telemetry fields
 
+CH1 = Temperature 1, C, XX, XX
+CH2 = Temperature 2, C, XX, XX
+CH3 = Temperature 3, C, XX, XX
+CH4 = Temperature 4, C, XX, XX
+CH5 = Temperature 5, C, XX, XX
+CH6 = Temperature 6, C, XX, XX
+CH7 = Temperature 7, C, XX, XX
+CH8 = Temperature 8, C, XX, XX
+CH9 = Analog_In_1, V, 0, 3.3
+CH10 = Analog_In_2, V, 0, 3.3
+CH11 = Analog_In_3, V, 0, 3.3
+CH12 = Analog_In_4, V, 0, 3.3
+CH13 = Analog_In_5, V, 0, 3.3
+CH14 = Analog_In_6, V, 0, 3.3
+CH15 = Analog_In_7, V, 0, 3.3
+CH16 = Analog_In_8, V, 0, 3.3
+CH17 = Differential Pressure, psi, 0, 15
+CH18 = Pressure, psi, 0, 150
+CH19 = TBD, unit, min, max
+CH20 = TBD, unit, min, max
+CH21 = TBD, unit, min, max
+CH22 = TBD, unit, min, max
+CH23 = TBD, unit, min, max
+
 UART Interface:
 A UART interface is connected to GPIO16 and GPIO17
 Allows 
