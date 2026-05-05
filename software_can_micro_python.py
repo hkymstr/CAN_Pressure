@@ -1,230 +1,445 @@
 """
-Data Acquisition System for Raspberry Pi Pico in MicroPython
-- 8MHz clock generation for MCP2515
-- ADC128S022 sampling via SPI0
-- CD74HC4067 16-channel MUX control 
-- SD Card logging via SPI0
-- CAN communication via SPI1 using MCP2515
+CAN Pressure Board — MicroPython firmware
+Raspberry Pi Pico (RP2040)
+
+Hardware pin assignments (verified from schematic CAN_adc.pdf):
+  SPI0  SCK/MOSI/MISO : GP2 / GP3 / GP4
+  SD card CS           : GP1
+  ADC128S022 CS        : GP5
+  SPI1  SCK/MOSI/MISO : GP10 / GP11 / GP8
+  MCP2515 CS           : GP9
+  MCP2515 8 MHz clock  : GP7  (PWM)
+  CD74HC4067 enable    : GP14
+  CD74HC4067 S0-S3     : GP16-GP19
+  RP2040 built-in RTC used for timestamps
+  Menu / UART interface via USB-CDC (115200 baud at host)
+
+Channel layout (23 total):
+  adc_data[0..15]  — MUX channels 0-15  (ADC IN0 through CD74HC4067)
+  adc_data[16..22] — Direct ADC IN1-IN7
+
+CAN telemetry (4 ch × 2 bytes = 8 bytes per frame):
+  0x200 : CH1-4   | 0x201 : CH5-8   | 0x202 : CH9-12
+  0x203 : CH13-16 | 0x204 : CH17-20 | 0x205 : CH21-23 + pad
 """
+
 import machine
 import utime
-import os
 import ustruct
-import sdcard
 import uos
+import sys
+import uselect
+import sdcard  # community MicroPython SD-card driver
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+
+# SPI0 — ADC + SD card
+SD_CS_PIN    = 1
+SPI0_SCK_PIN = 2
+SPI0_TX_PIN  = 3
+SPI0_RX_PIN  = 4
+ADC_CS_PIN   = 5
+
+# SPI1 — MCP2515 CAN controller
+CAN_CLK_PIN  = 7   # 8 MHz PWM output
+CAN_RX_PIN   = 8   # SPI1 MISO
+CAN_CS_PIN   = 9
+CAN_SCK_PIN  = 10
+CAN_TX_PIN   = 11  # SPI1 MOSI
+
+# CD74HC4067 MUX
+MUX_CS_PIN   = 14
+MUX_S0_PIN   = 16
+MUX_S1_PIN   = 17
+MUX_S2_PIN   = 18
+MUX_S3_PIN   = 19
+
+# Sampling
+SAMPLE_HZ      = 5
+SAMPLE_PERIOD  = 1000 // SAMPLE_HZ   # 200 ms
+CAN_TX_PERIOD  = 500                 # ms  (2 Hz)
+LOG_PERIOD     = 1000                # ms  (1 Hz)
+
+# MCP2515 SPI commands
+MCP_RESET    = 0xC0
+MCP_READ     = 0x03
+MCP_WRITE    = 0x02
+MCP_LOAD_TX0 = 0x40   # load TX buffer 0, start at SIDH
+MCP_RTS_TX0  = 0x81   # request-to-send TX0
+
+# MCP2515 registers
+MCP_CANCTRL = 0x0F
+MCP_CNF3    = 0x28
+MCP_CNF2    = 0x29
+MCP_CNF1    = 0x2A
+
+# CAN bit-timing for 8 MHz oscillator
+# Each config = (CNF1, CNF2, CNF3)
+# 8 TQ/bit scheme: SYNC=1 PROP=1 PS1=3 PS2=3, BRP varies
+# 4 TQ/bit scheme for 1 Mbps: SYNC=1 PROP=1 PS1=1 PS2=1
+_CAN_BAUD = {
+    125:  (0x03, 0x90, 0x02),   # BRP=3  → TQ=1 µs  → 8 TQ → 125 kbps
+    250:  (0x01, 0x90, 0x02),   # BRP=1  → TQ=500 ns → 8 TQ → 250 kbps
+    500:  (0x00, 0x90, 0x02),   # BRP=0  → TQ=250 ns → 8 TQ → 500 kbps
+    1000: (0x00, 0x80, 0x00),   # BRP=0  → TQ=250 ns → 4 TQ → 1 Mbps
+}
+DEFAULT_BAUD = 500
+
+# CAN base ID and channel count
+CAN_BASE_ID = 0x200
+NUM_CH      = 23
+
+# OBD channel definitions: (name, unit, min, max)
+_OBD_CHANNELS = [
+    ("Temperature_1",   "C",   -40, 200),
+    ("Temperature_2",   "C",   -40, 200),
+    ("Temperature_3",   "C",   -40, 200),
+    ("Temperature_4",   "C",   -40, 200),
+    ("Temperature_5",   "C",   -40, 200),
+    ("Temperature_6",   "C",   -40, 200),
+    ("Temperature_7",   "C",   -40, 200),
+    ("Temperature_8",   "C",   -40, 200),
+    ("Analog_In_1",     "V",     0, 3.3),
+    ("Analog_In_2",     "V",     0, 3.3),
+    ("Analog_In_3",     "V",     0, 3.3),
+    ("Analog_In_4",     "V",     0, 3.3),
+    ("Analog_In_5",     "V",     0, 3.3),
+    ("Analog_In_6",     "V",     0, 3.3),
+    ("Analog_In_7",     "V",     0, 3.3),
+    ("Analog_In_8",     "V",     0, 3.3),
+    ("Diff_Pressure",   "psi",   0,  15),
+    ("Pressure",        "psi",   0, 150),
+    ("TBD_19",          "unit",  0,   0),
+    ("TBD_20",          "unit",  0,   0),
+    ("TBD_21",          "unit",  0,   0),
+    ("TBD_22",          "unit",  0,   0),
+    ("TBD_23",          "unit",  0,   0),
+]
+
+
+# ---------------------------------------------------------------------------
+# Data Acquisition System
+# ---------------------------------------------------------------------------
 
 class DataAcquisitionSystem:
     def __init__(self):
-        # Define pins
-        # SPI0 for ADC and SD Card
-        self.spi0 = machine.SPI(0, 
-                               baudrate=2000000,
-                               polarity=0,
-                               phase=0,
-                               bits=8,
-                               sck=machine.Pin(2),
-                               mosi=machine.Pin(3),
-                               miso=machine.Pin(4))
-        
-        # SPI1 for CAN Controller
-        self.spi1 = machine.SPI(1,
-                               baudrate=10000000,
-                               polarity=0,
-                               phase=0,
-                               bits=8,
-                               sck=machine.Pin(10),
-                               mosi=machine.Pin(11),
-                               miso=machine.Pin(8))
-        
-        # Chip Select pins
-        self.sd_cs = machine.Pin(1, machine.Pin.OUT, value=1)  # SD Card CS
-        self.adc_cs = machine.Pin(5, machine.Pin.OUT, value=1)  # ADC CS
-        self.can_cs = machine.Pin(9, machine.Pin.OUT, value=1)  # CAN CS
-        self.mux_cs = machine.Pin(14, machine.Pin.OUT, value=1)  # MUX CS
-        
-        # MUX control pins
-        self.mux_s0 = machine.Pin(16, machine.Pin.OUT)
-        self.mux_s1 = machine.Pin(17, machine.Pin.OUT)
-        self.mux_s2 = machine.Pin(18, machine.Pin.OUT)
-        self.mux_s3 = machine.Pin(19, machine.Pin.OUT)
-        
-        # 8MHz clock for MCP2515
-        self.can_clk = machine.PWM(machine.Pin(7))
-        self.can_clk.freq(8000000)
-        self.can_clk.duty_u16(32768)  # 50% duty cycle
-        
-        # Mount SD card
-        self.sd = sdcard.SDCard(self.spi0, self.sd_cs)
-        uos.mount(self.sd, '/sd')
-        self.log_file = None
-        
-        # Initialize CAN controller
-        self.init_can_controller()
-        
-        # Data storage
-        self.adc_data = [0] * 23  # Total 23 channels: 7 direct + 16 through MUX
-        self.last_log_time = 0
-        self.last_can_time = 0
+        self._init_spi()
+        self._init_pins()
+        self._init_can_clock()
+        self.rtc = machine.RTC()
+        self.adc_data = [0] * NUM_CH
+        self.can_baud = DEFAULT_BAUD
+        self._sd_ok = False
+        self._init_sd()
+        self._init_can(self.can_baud)
+        # Non-blocking stdin poll for menu trigger
+        self._poll = uselect.poll()
+        self._poll.register(sys.stdin, uselect.POLLIN)
 
-    def set_mux_channel(self, channel):
-        """Set the MUX channel (0-15)"""
-        self.mux_cs.value(0)  # Enable MUX
-        self.mux_s0.value(channel & 0x01)
-        self.mux_s1.value((channel >> 1) & 0x01)
-        self.mux_s2.value((channel >> 2) & 0x01)
-        self.mux_s3.value((channel >> 3) & 0x01)
-        utime.sleep_us(5)  # Small delay for MUX to settle
-    
-    def read_adc_channel(self, channel):
-        """Read a specific ADC channel (0-7)"""
-        # Prepare command: start bit (1) + single-ended (1) + channel (3 bits) + zeros
-        command = 0x80 | ((channel & 0x07) << 4)
-        
-        self.adc_cs.value(0)  # Select ADC
-        utime.sleep_us(1)
-        
-        # Send command and read result
-        self.spi0.write(bytes([command, 0x00]))
-        result = bytearray(2)
-        self.spi0.readinto(result)
-        
-        self.adc_cs.value(1)  # Deselect ADC
-        
-        # Convert result (12-bit value)
-        value = ((result[0] & 0x0F) << 8) | result[1]
-        return value
-    
-    def sample_all_channels(self):
-        """Sample all 23 ADC channels (7 direct + 16 through MUX)"""
-        # First sample channels 1-7 directly
-        for i in range(1, 8):
-            self.adc_data[i] = self.read_adc_channel(i)
-        
-        # Then sample channels through MUX (connected to ADC channel 0)
-        for i in range(16):
-            self.set_mux_channel(i)
-            utime.sleep_us(50)  # Allow MUX to settle
-            self.adc_data[i + 7] = self.read_adc_channel(0)
-    
-    def log_data_to_sd(self):
-        """Log all ADC data to SD card"""
+    # ------------------------------------------------------------------
+    # Hardware init
+    # ------------------------------------------------------------------
+
+    def _init_spi(self):
+        self.spi0 = machine.SPI(
+            0, baudrate=2_000_000, polarity=0, phase=0, bits=8,
+            sck=machine.Pin(SPI0_SCK_PIN),
+            mosi=machine.Pin(SPI0_TX_PIN),
+            miso=machine.Pin(SPI0_RX_PIN))
+
+        self.spi1 = machine.SPI(
+            1, baudrate=10_000_000, polarity=0, phase=0, bits=8,
+            sck=machine.Pin(CAN_SCK_PIN),
+            mosi=machine.Pin(CAN_TX_PIN),
+            miso=machine.Pin(CAN_RX_PIN))
+
+    def _init_pins(self):
+        self.sd_cs  = machine.Pin(SD_CS_PIN,  machine.Pin.OUT, value=1)
+        self.adc_cs = machine.Pin(ADC_CS_PIN, machine.Pin.OUT, value=1)
+        self.can_cs = machine.Pin(CAN_CS_PIN, machine.Pin.OUT, value=1)
+        self.mux_cs = machine.Pin(MUX_CS_PIN, machine.Pin.OUT, value=1)
+        self.mux_s  = [
+            machine.Pin(MUX_S0_PIN, machine.Pin.OUT),
+            machine.Pin(MUX_S1_PIN, machine.Pin.OUT),
+            machine.Pin(MUX_S2_PIN, machine.Pin.OUT),
+            machine.Pin(MUX_S3_PIN, machine.Pin.OUT),
+        ]
+
+    def _init_can_clock(self):
+        """Generate 8 MHz clock on GP7 for MCP2515."""
+        self._can_clk = machine.PWM(machine.Pin(CAN_CLK_PIN))
+        self._can_clk.freq(8_000_000)
+        self._can_clk.duty_u16(32768)  # 50 % duty cycle
+
+    def _init_sd(self):
         try:
-            # Open file in append mode
-            with open('/sd/adc_log.csv', 'a') as f:
-                # Write timestamp
-                timestamp = utime.time()
-                f.write(f"{timestamp}")
-                
-                # Write all ADC values
-                for value in self.adc_data:
-                    f.write(f",{value}")
-                
-                f.write("\n")
-                
-        except Exception as e:
-            print(f"Error logging to SD card: {e}")
-    
-    def init_can_controller(self):
-        """Initialize the MCP2515 CAN controller"""
-        # Reset MCP2515
+            sd = sdcard.SDCard(self.spi0, self.sd_cs)
+            uos.mount(sd, '/sd')
+            self._sd_ok = True
+            print("SD card mounted.")
+            self._init_log_header()
+            self._write_obd_file()
+        except Exception as exc:
+            print(f"SD card unavailable: {exc}")
+
+    # ------------------------------------------------------------------
+    # MCP2515
+    # ------------------------------------------------------------------
+
+    def _can_write(self, addr, val):
         self.can_cs.value(0)
-        self.spi1.write(bytes([0xC0]))  # RESET command
-        self.can_cs.value(1)
-        utime.sleep_ms(10)  # Wait for reset
-        
-        # Configure MCP2515 for 500kbps with 8MHz clock
-        self.can_cs.value(0)
-        self.spi1.write(bytes([0x02, 0x2A, 0x04]))  # Write to CNF3, CNF2
-        self.can_cs.value(1)
-        
-        self.can_cs.value(0)
-        self.spi1.write(bytes([0x02, 0x28, 0x00]))  # Write to CNF1
-        self.can_cs.value(1)
-        
-        # Set normal mode
-        self.can_cs.value(0)
-        self.spi1.write(bytes([0x02, 0x0F, 0x00]))  # Write to CANCTRL, normal mode
+        self.spi1.write(bytes([MCP_WRITE, addr, val]))
         self.can_cs.value(1)
 
-    def send_can_message(self, id, data):
-        """Send data via CAN bus"""
-        # Prepare CAN message
+    def _can_read(self, addr):
+        buf = bytearray(1)
         self.can_cs.value(0)
-        self.spi1.write(bytes([0x40, 0x08]))  # Load TX buffer 0 command, standard ID
+        self.spi1.write(bytes([MCP_READ, addr]))
+        self.spi1.readinto(buf)
         self.can_cs.value(1)
-        
-        # ID and data length
+        return buf[0]
+
+    def _init_can(self, baud_kbps):
+        # Hardware reset
         self.can_cs.value(0)
-        buffer = bytearray([id >> 3, (id & 0x07) << 5, 0, 0, len(data)])
-        buffer.extend(data)
-        self.spi1.write(buffer)
+        self.spi1.write(bytes([MCP_RESET]))
         self.can_cs.value(1)
-        
+        utime.sleep_ms(10)
+
+        # Enter configuration mode
+        self._can_write(MCP_CANCTRL, 0x80)
+        utime.sleep_ms(1)
+
+        cnf1, cnf2, cnf3 = _CAN_BAUD.get(baud_kbps, _CAN_BAUD[500])
+        self._can_write(MCP_CNF3, cnf3)
+        self._can_write(MCP_CNF2, cnf2)
+        self._can_write(MCP_CNF1, cnf1)
+
+        # Normal mode
+        self._can_write(MCP_CANCTRL, 0x00)
+        utime.sleep_ms(1)
+
+    def _send_can_frame(self, can_id, data):
+        """Load and transmit one standard CAN frame via TX buffer 0."""
+        sidh = (can_id >> 3) & 0xFF
+        sidl = (can_id & 0x07) << 5
+        dlc  = len(data) & 0x0F
+        # Single CS-asserted transaction: LOAD_TX0 + header + payload
+        buf = bytearray([MCP_LOAD_TX0, sidh, sidl, 0x00, 0x00, dlc])
+        buf.extend(data)
+        self.can_cs.value(0)
+        self.spi1.write(buf)
+        self.can_cs.value(1)
         # Request to send
         self.can_cs.value(0)
-        self.spi1.write(bytes([0x81]))  # RTS TX buffer 0
+        self.spi1.write(bytes([MCP_RTS_TX0]))
         self.can_cs.value(1)
-    
-    def send_adc_data_via_can(self):
-        """Send all ADC data via CAN bus (might need multiple messages)"""
-        # We need to split the 23 channels into multiple CAN messages
-        # Each CAN message can carry up to 8 bytes
-        
-        # Convert 12-bit ADC values to bytes (2 bytes per value)
-        all_bytes = bytearray()
-        for value in self.adc_data:
-            all_bytes.extend(ustruct.pack(">H", value))
-        
-        # Send data in chunks
-        chunk_size = 8  # 8 bytes per CAN message
-        for i in range(0, len(all_bytes), chunk_size):
-            chunk = all_bytes[i:i+chunk_size]
-            # Use different IDs for different chunks
-            self.send_can_message(0x100 + (i // chunk_size), chunk)
-            utime.sleep_ms(5)  # Small delay between messages
-    
-    def run(self):
-        """Main execution loop"""
-        print("Data Acquisition System running...")
-        
-        try:
-            # Create log file header if it doesn't exist
-            if not 'adc_log.csv' in os.listdir('/sd'):
-                with open('/sd/adc_log.csv', 'w') as f:
-                    f.write("timestamp")
-                    for i in range(23):
-                        f.write(f",adc{i}")
-                    f.write("\n")
-            
-            while True:
-                current_time = utime.time()
-                
-                # Sample all ADC channels
-                self.sample_all_channels()
-                
-                # Log data to SD card once per second
-                if current_time - self.last_log_time >= 1:
-                    self.log_data_to_sd()
-                    self.last_log_time = current_time
-                
-                # Send data via CAN twice per second
-                if current_time - self.last_can_time >= 0.5:
-                    self.send_adc_data_via_can()
-                    self.last_can_time = current_time
-                
-                # Small delay to prevent busy waiting
-                utime.sleep_ms(100)
-                
-        except KeyboardInterrupt:
-            print("Program stopped by user")
-        finally:
-            # Unmount the SD card
-            try:
-                uos.umount('/sd')
-            except:
-                pass
 
-# Main program
+    # ------------------------------------------------------------------
+    # ADC128S022 + CD74HC4067 MUX
+    # ------------------------------------------------------------------
+
+    def _set_mux(self, ch):
+        """Select MUX channel 0-15 and assert MUX enable."""
+        self.mux_cs.value(0)
+        for i, pin in enumerate(self.mux_s):
+            pin.value((ch >> i) & 1)
+        utime.sleep_us(10)  # MUX propagation settle
+
+    def _read_adc(self, ch):
+        """
+        Read one ADC128S022 channel (0-7), return 12-bit integer.
+        Command word DIN[13:11] = channel address (see ADC128S022 datasheet).
+        Result is pipelined one frame behind; prime the pipeline by calling
+        this twice when switching channels (handled in sample_all_channels).
+        """
+        cmd = (ch & 0x07) << 3   # DIN[13:11] = channel
+        rx  = bytearray(2)
+        self.adc_cs.value(0)
+        utime.sleep_us(1)
+        self.spi0.write_readinto(bytes([cmd, 0x00]), rx)
+        self.adc_cs.value(1)
+        return ((rx[0] & 0x0F) << 8) | rx[1]
+
+    def sample_all_channels(self):
+        """
+        Acquire all 23 channels at 5 Hz.
+        adc_data[0..15]  = MUX ch 0-15 (via ADC IN0)
+        adc_data[16..22] = ADC IN1-IN7 (direct)
+        """
+        # MUX channels: prime ADC pipeline after each MUX switch
+        for i in range(16):
+            self._set_mux(i)
+            utime.sleep_us(50)   # MUX + signal settle
+            self._read_adc(0)    # prime (pipeline lag)
+            self.adc_data[i] = self._read_adc(0)
+        self.mux_cs.value(1)     # de-assert MUX enable
+
+        # Direct ADC channels 1-7 — read sequentially (pipelined naturally)
+        self._read_adc(1)        # prime channel 1
+        for i in range(1, 8):
+            self.adc_data[15 + i] = self._read_adc(i)
+
+    # ------------------------------------------------------------------
+    # CAN telemetry transmit + SD log
+    # ------------------------------------------------------------------
+
+    def _timestamp(self):
+        y, mo, d, _, h, mi, s, _ = self.rtc.datetime()
+        return f"{y}-{mo:02d}-{d:02d} {h:02d}:{mi:02d}:{s:02d}"
+
+    def send_telemetry(self):
+        """Pack 23 channels into 6 CAN frames (0x200-0x205) and log each."""
+        ts = self._timestamp()
+        for msg_idx in range(6):
+            payload = bytearray(8)
+            for j in range(4):
+                ch = msg_idx * 4 + j
+                val = self.adc_data[ch] if ch < NUM_CH else 0
+                ustruct.pack_into('>H', payload, j * 2, val)
+            can_id = CAN_BASE_ID + msg_idx
+            self._send_can_frame(can_id, payload)
+            self._log_can_row(ts, can_id, payload)
+            utime.sleep_ms(1)   # brief gap between frames
+
+    # ------------------------------------------------------------------
+    # SD card logging
+    # ------------------------------------------------------------------
+
+    def _init_log_header(self):
+        """Write CSV header if log file does not yet exist."""
+        path = '/sd/can_log.csv'
+        try:
+            uos.stat(path)
+        except OSError:
+            with open(path, 'w') as f:
+                f.write("Time Stamp,ID,Extended,Bus,LEN,D1,D2,D3,D4,D5,D6,D7,D8\n")
+
+    def _log_can_row(self, ts, can_id, data):
+        if not self._sd_ok:
+            return
+        try:
+            with open('/sd/can_log.csv', 'a') as f:
+                row = f"{ts},0x{can_id:03X},0,0,{len(data)}"
+                for b in data:
+                    row += f",{b}"
+                f.write(row + "\n")
+        except Exception as exc:
+            print(f"Log write error: {exc}")
+
+    def _write_obd_file(self):
+        """Write OBD channel definition file (created once)."""
+        path = '/sd/channels.obd'
+        try:
+            uos.stat(path)
+            return
+        except OSError:
+            pass
+        with open(path, 'w') as f:
+            for i, (name, unit, mn, mx) in enumerate(_OBD_CHANNELS, 1):
+                can_id     = CAN_BASE_ID + (i - 1) // 4
+                byte_off   = ((i - 1) % 4) * 2
+                f.write(
+                    f"CH{i} = {name}, {unit}, {mn}, {mx}, "
+                    f"CAN_ID=0x{can_id:03X}, Byte={byte_off}, Len=2, "
+                    f"Scale=1, BigEndian=1, Signed=0\n"
+                )
+        print("OBD file written to /sd/channels.obd")
+
+    # ------------------------------------------------------------------
+    # Menu (accessed via USB-CDC serial — press Ctrl-C or Enter)
+    # ------------------------------------------------------------------
+
+    def _menu_set_rtc(self):
+        print("\nSet RTC — enter UTC date/time:")
+        try:
+            year = int(input("  Year  (YYYY) : "))
+            mon  = int(input("  Month (1-12) : "))
+            day  = int(input("  Day   (1-31) : "))
+            hour = int(input("  Hour  (0-23) : "))
+            mins = int(input("  Min   (0-59) : "))
+            secs = int(input("  Sec   (0-59) : "))
+            self.rtc.datetime((year, mon, day, 0, hour, mins, secs, 0))
+            print(f"  RTC set → {self._timestamp()}")
+        except Exception as exc:
+            print(f"  Error: {exc}")
+
+    def _menu_set_baud(self):
+        print("\nSelect CAN baud rate:")
+        opts = {1: 125, 2: 250, 3: 500, 4: 1000}
+        for k, v in opts.items():
+            mark = " ←" if v == self.can_baud else ""
+            print(f"  {k}. {v} kbps{mark}")
+        choice = input("Choice [1-4]: ").strip()
+        baud = opts.get(int(choice) if choice.isdigit() else 0)
+        if baud:
+            self.can_baud = baud
+            self._init_can(baud)
+            print(f"  CAN set to {baud} kbps")
+        else:
+            print("  Invalid choice, no change.")
+
+    def _run_menu(self):
+        print("\n=== CAN Pressure Board ===")
+        print("  1. Set RTC time")
+        print("  2. Set CAN baud rate")
+        print("  3. Resume acquisition")
+        while True:
+            choice = input("> ").strip()
+            if choice == '1':
+                self._menu_set_rtc()
+            elif choice == '2':
+                self._menu_set_baud()
+            elif choice in ('3', '', 'q'):
+                print("Resuming acquisition...\n")
+                return
+            else:
+                print("  Enter 1, 2, or 3.")
+
+    # ------------------------------------------------------------------
+    # Main loop
+    # ------------------------------------------------------------------
+
+    def run(self):
+        print("CAN Pressure Board — running.  Press Enter for menu.")
+        t_sample = utime.ticks_ms()
+        t_can_tx = utime.ticks_ms()
+
+        while True:
+            now = utime.ticks_ms()
+
+            # Check for Enter key (non-blocking)
+            if self._poll.poll(0):
+                ch = sys.stdin.read(1)
+                if ch in ('\r', '\n'):
+                    self._run_menu()
+                    # Reset timers after menu to avoid burst
+                    t_sample = utime.ticks_ms()
+                    t_can_tx = utime.ticks_ms()
+                    continue
+
+            # Sample at 5 Hz
+            if utime.ticks_diff(now, t_sample) >= SAMPLE_PERIOD:
+                self.sample_all_channels()
+                t_sample = utime.ticks_add(t_sample, SAMPLE_PERIOD)
+
+            # Transmit CAN + log at 2 Hz
+            if utime.ticks_diff(now, t_can_tx) >= CAN_TX_PERIOD:
+                self.send_telemetry()
+                t_can_tx = utime.ticks_add(t_can_tx, CAN_TX_PERIOD)
+
+
 if __name__ == "__main__":
-    system = DataAcquisitionSystem()
-    system.run()
+    das = DataAcquisitionSystem()
+    try:
+        das.run()
+    except KeyboardInterrupt:
+        das._run_menu()
+        das.run()
+    finally:
+        try:
+            uos.umount('/sd')
+        except Exception:
+            pass
