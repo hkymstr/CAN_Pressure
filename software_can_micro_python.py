@@ -56,11 +56,18 @@ MUX_S1_PIN   = 17
 MUX_S2_PIN   = 18
 MUX_S3_PIN   = 19
 
-# Sampling
-SAMPLE_HZ      = 5
-SAMPLE_PERIOD  = 1000 // SAMPLE_HZ   # 200 ms
-CAN_TX_PERIOD  = 500                 # ms  (2 Hz)
-LOG_PERIOD     = 1000                # ms  (1 Hz)
+# Sampling / display
+SAMPLE_HZ       = 5
+SAMPLE_PERIOD   = 1000 // SAMPLE_HZ   # 200 ms
+CAN_TX_PERIOD   = 500                 # ms  (2 Hz)
+DISPLAY_PERIOD  = 1000                # ms  (1 Hz)
+
+# Display modes
+DISP_OFF   = 0
+DISP_TABLE = 1
+DISP_CSV   = 2
+DISP_BOTH  = 3
+_DISP_NAMES = {DISP_OFF: "OFF", DISP_TABLE: "TABLE", DISP_CSV: "CSV", DISP_BOTH: "BOTH"}
 
 # MCP2515 SPI commands
 MCP_RESET    = 0xC0
@@ -129,9 +136,10 @@ class DataAcquisitionSystem:
         self._init_pins()
         self._init_can_clock()
         self.rtc = machine.RTC()
-        self.adc_data = [0] * NUM_CH
-        self.can_baud = DEFAULT_BAUD
-        self._sd_ok = False
+        self.adc_data    = [0] * NUM_CH
+        self.can_baud    = DEFAULT_BAUD
+        self.display_mode = DISP_OFF
+        self._sd_ok      = False
         self._init_sd()
         self._init_can(self.can_baud)
         # Non-blocking stdin poll for menu trigger
@@ -349,6 +357,49 @@ class DataAcquisitionSystem:
         print("OBD file written to /sd/channels.obd")
 
     # ------------------------------------------------------------------
+    # Serial telemetry display (1 Hz)
+    # ------------------------------------------------------------------
+
+    def _print_table(self):
+        """Human-readable channel table printed to USB-CDC at 1 Hz."""
+        ts   = self._timestamp()
+        sep  = "=" * 58
+        dash = "-" * 58
+        print(sep)
+        print(f"  CAN Pressure Board  |  {ts}  |  {self.can_baud} kbps")
+        print(sep)
+        print(f"  {'CH':>2}  {'Channel':<18}  {'Raw':>5}  {'Value':>9}  Unit")
+        print(dash)
+        for i, (name, unit, mn, mx) in enumerate(_OBD_CHANNELS):
+            raw = self.adc_data[i]
+            if mx != mn:
+                scaled = mn + (raw / 4095.0) * (mx - mn)
+                val_str = f"{scaled:9.2f}"
+            else:
+                val_str = f"{'---':>9}"
+            print(f"  {i+1:>2}  {name:<18}  {raw:>5}  {val_str}  {unit}")
+        print(sep)
+
+    def _print_csv(self):
+        """
+        Single CSV line prefixed with $DATA, for machine parsing.
+        Format: $DATA,<timestamp>,<CH1>,...,<CH23>
+        The PC monitor script filters for lines starting with $DATA,.
+        """
+        ts = self._timestamp()
+        vals = ",".join(str(v) for v in self.adc_data)
+        print(f"$DATA,{ts},{vals}")
+
+    def display_telemetry(self):
+        if self.display_mode == DISP_TABLE:
+            self._print_table()
+        elif self.display_mode == DISP_CSV:
+            self._print_csv()
+        elif self.display_mode == DISP_BOTH:
+            self._print_table()
+            self._print_csv()
+
+    # ------------------------------------------------------------------
     # Menu (accessed via USB-CDC serial — press Ctrl-C or Enter)
     # ------------------------------------------------------------------
 
@@ -381,22 +432,40 @@ class DataAcquisitionSystem:
         else:
             print("  Invalid choice, no change.")
 
+    def _menu_set_display(self):
+        modes = {1: DISP_OFF, 2: DISP_TABLE, 3: DISP_CSV, 4: DISP_BOTH}
+        print("\nSelect display mode:")
+        for k, v in modes.items():
+            mark = " ←" if v == self.display_mode else ""
+            print(f"  {k}. {_DISP_NAMES[v]}{mark}")
+        choice = input("Choice [1-4]: ").strip()
+        mode = modes.get(int(choice) if choice.isdigit() else 0)
+        if mode is not None:
+            self.display_mode = mode
+            print(f"  Display set to {_DISP_NAMES[mode]}")
+        else:
+            print("  Invalid choice, no change.")
+
     def _run_menu(self):
+        mode_name = _DISP_NAMES[self.display_mode]
         print("\n=== CAN Pressure Board ===")
         print("  1. Set RTC time")
         print("  2. Set CAN baud rate")
-        print("  3. Resume acquisition")
+        print(f"  3. Set display mode  [{mode_name}]")
+        print("  4. Resume acquisition")
         while True:
             choice = input("> ").strip()
             if choice == '1':
                 self._menu_set_rtc()
             elif choice == '2':
                 self._menu_set_baud()
-            elif choice in ('3', '', 'q'):
+            elif choice == '3':
+                self._menu_set_display()
+            elif choice in ('4', '', 'q'):
                 print("Resuming acquisition...\n")
                 return
             else:
-                print("  Enter 1, 2, or 3.")
+                print("  Enter 1, 2, 3, or 4.")
 
     # ------------------------------------------------------------------
     # Main loop
@@ -404,8 +473,9 @@ class DataAcquisitionSystem:
 
     def run(self):
         print("CAN Pressure Board — running.  Press Enter for menu.")
-        t_sample = utime.ticks_ms()
-        t_can_tx = utime.ticks_ms()
+        t_sample  = utime.ticks_ms()
+        t_can_tx  = utime.ticks_ms()
+        t_display = utime.ticks_ms()
 
         while True:
             now = utime.ticks_ms()
@@ -415,9 +485,9 @@ class DataAcquisitionSystem:
                 ch = sys.stdin.read(1)
                 if ch in ('\r', '\n'):
                     self._run_menu()
-                    # Reset timers after menu to avoid burst
-                    t_sample = utime.ticks_ms()
-                    t_can_tx = utime.ticks_ms()
+                    t_sample  = utime.ticks_ms()
+                    t_can_tx  = utime.ticks_ms()
+                    t_display = utime.ticks_ms()
                     continue
 
             # Sample at 5 Hz
@@ -429,6 +499,12 @@ class DataAcquisitionSystem:
             if utime.ticks_diff(now, t_can_tx) >= CAN_TX_PERIOD:
                 self.send_telemetry()
                 t_can_tx = utime.ticks_add(t_can_tx, CAN_TX_PERIOD)
+
+            # Display telemetry at 1 Hz
+            if self.display_mode != DISP_OFF:
+                if utime.ticks_diff(now, t_display) >= DISPLAY_PERIOD:
+                    self.display_telemetry()
+                    t_display = utime.ticks_add(t_display, DISPLAY_PERIOD)
 
 
 if __name__ == "__main__":
