@@ -29,7 +29,13 @@ import ustruct
 import uos
 import sys
 import uselect
-import sdcard  # community MicroPython SD-card driver
+
+try:
+    import sdcard  # community MicroPython SD-card driver
+    _SDCARD_AVAILABLE = True
+except ImportError:
+    _SDCARD_AVAILABLE = False
+    print("WARNING: sdcard module not found — SD logging disabled.")
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -182,6 +188,8 @@ class DataAcquisitionSystem:
         self._can_clk.duty_u16(32768)  # 50 % duty cycle
 
     def _init_sd(self):
+        if not _SDCARD_AVAILABLE:
+            return
         try:
             sd = sdcard.SDCard(self.spi0, self.sd_cs)
             uos.mount(sd, '/sd')
@@ -191,8 +199,9 @@ class DataAcquisitionSystem:
             self._write_obd_file()
         except Exception as exc:
             print(f"SD card unavailable: {exc}")
+        finally:
             # sdcard driver reconfigures SPI0 baudrate/mode during init;
-            # reinitialise so ADC reads are not corrupted when no SD is present.
+            # always reinitialise so ADC reads are not corrupted.
             self.spi0 = machine.SPI(
                 0, baudrate=2_000_000, polarity=0, phase=0, bits=8,
                 sck=machine.Pin(SPI0_SCK_PIN),
@@ -292,9 +301,9 @@ class DataAcquisitionSystem:
             self.adc_data[i] = self._read_adc(0)
         self.mux_cs.value(1)     # de-assert MUX enable
 
-        # Direct ADC channels 1-7 — read sequentially (pipelined naturally)
-        self._read_adc(1)        # prime channel 1
+        # Direct ADC channels 1-7 — double-read each to flush pipeline
         for i in range(1, 8):
+            self._read_adc(i)                    # prime
             self.adc_data[15 + i] = self._read_adc(i)
 
     # ------------------------------------------------------------------
@@ -479,7 +488,8 @@ class DataAcquisitionSystem:
     # ------------------------------------------------------------------
 
     def run(self):
-        print("CAN Pressure Board — running.  Press Enter for menu.")
+        print("CAN Pressure Board v2 — running.  Press Enter for menu.")
+        print(f"Display mode: {_DISP_NAMES[self.display_mode]}  |  CAN: {self.can_baud} kbps  |  SD: {'OK' if self._sd_ok else 'none'}")
         t_sample  = utime.ticks_ms()
         t_can_tx  = utime.ticks_ms()
         t_display = utime.ticks_ms()
