@@ -47,26 +47,27 @@ CHANNELS = [
     ("Spare_1",        "V",      0,  3.3),
     ("Spare_2",        "V",      0,  3.3),
     ("Spare_3",        "V",      0,  3.3),
-    # CH10–16: direct analog inputs (buffered, 0–3.3 V)
+    # CH10–14: analog inputs
     ("Analog_In_1",    "V",      0,  3.3),
     ("Analog_In_2",    "V",      0,  3.3),
     ("Analog_In_3",    "V",      0,  3.3),
     ("Analog_In_4",    "V",      0,  3.3),
     ("Analog_In_5",    "V",      0,  3.3),
+    # CH15: spare (unused)
+    ("Spare_4",        "V",      0,  3.3),
+    # CH16–17: analog inputs (cont.)
     ("Analog_In_6",    "V",      0,  3.3),
     ("Analog_In_7",    "V",      0,  3.3),
-    # CH17: differential pressure (SSCDRRN005PDAA5, 0–15 psi)
+    # CH18: differential pressure (SSCDRRN005PDAA5, 0–15 psi)
     ("Diff_Pressure",  "psi",    0,   15),
-    # CH18: gauge pressure (SSCDANND015PGAA5, 0–150 psi)
+    # CH19: gauge pressure (SSCDANND015PGAA5, 0–150 psi)
     ("Pressure",       "psi",    0,  150),
-    # CH19–21: current monitors (INA4180A2, 50 V/V, 50 mΩ shunt → 0–1.32 A)
+    # CH20–22: current monitors (INA4180A2, 50 V/V, 50 mΩ shunt → 0–1.32 A)
     ("Input_Current",  "A",      0, 1.32),
     ("Curr_5V",        "A",      0, 1.32),
     ("Curr_3V3",       "A",      0, 1.32),
-    # CH22: 5 V rail via 0.5 divider (×2 recovery → 0–6.6 V)
+    # CH23: 5 V rail via 0.5 divider (×2 recovery → 0–6.6 V)
     ("Voltage_5V",     "V",      0,  6.6),
-    # CH23: spare
-    ("Spare_4",        "V",      0,  3.3),
 ]
 
 NUM_CH       = len(CHANNELS)

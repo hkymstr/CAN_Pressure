@@ -110,36 +110,37 @@ NUM_CH      = 23
 # Voltage_5V scaling:  0.5 resistor divider → ×2 → 0–6.6 V over 0–3.3 V ADC
 _OBD_CHANNELS = [
     # CH1–6: thermocouple inputs (via MUX)
-    ("Temperature_1",   "C",     0, 330),
-    ("Temperature_2",   "C",     0, 330),
-    ("Temperature_3",   "C",     0, 330),
-    ("Temperature_4",   "C",     0, 330),
-    ("Temperature_5",   "C",     0, 330),
-    ("Temperature_6",   "C",     0, 330),
+    ("Temperature_1",   "C",     0, 330),   # index 0
+    ("Temperature_2",   "C",     0, 330),   # index 1
+    ("Temperature_3",   "C",     0, 330),   # index 2
+    ("Temperature_4",   "C",     0, 330),   # index 3
+    ("Temperature_5",   "C",     0, 330),   # index 4
+    ("Temperature_6",   "C",     0, 330),   # index 5
     # CH7–9: spare MUX inputs (unconnected)
-    ("Spare_1",         "V",     0, 3.3),
-    ("Spare_2",         "V",     0, 3.3),
-    ("Spare_3",         "V",     0, 3.3),
-    # CH10–16: direct analog inputs (buffered, 0–3.3 V)
-    ("Analog_In_1",     "V",     0, 3.3),
-    ("Analog_In_2",     "V",     0, 3.3),
-    ("Analog_In_3",     "V",     0, 3.3),
-    ("Analog_In_4",     "V",     0, 3.3),
-    ("Analog_In_5",     "V",     0, 3.3),
-    ("Analog_In_6",     "V",     0, 3.3),
-    ("Analog_In_7",     "V",     0, 3.3),
-    # CH17: differential pressure sensor (SSCDRRN005PDAA5, 0–15 psi)
-    ("Diff_Pressure",   "psi",   0,  15),
-    # CH18: gauge pressure sensor (SSCDANND015PGAA5, 0–150 psi)
-    ("Pressure",        "psi",   0, 150),
-    # CH19–21: current monitors (INA4180A2, 50 V/V gain, 50 mΩ shunt)
-    ("Input_Current",   "A",     0, 1.32),
-    ("Curr_5V",         "A",     0, 1.32),
-    ("Curr_3V3",        "A",     0, 1.32),
-    # CH22: 5 V rail monitor via 0.5 resistor divider (×2 to recover voltage)
-    ("Voltage_5V",      "V",     0, 6.6),
-    # CH23: spare
-    ("Spare_4",         "V",     0, 3.3),
+    ("Spare_1",         "V",     0, 3.3),   # index 6
+    ("Spare_2",         "V",     0, 3.3),   # index 7
+    ("Spare_3",         "V",     0, 3.3),   # index 8
+    # CH10–14: analog inputs
+    ("Analog_In_1",     "V",     0, 3.3),   # index 9
+    ("Analog_In_2",     "V",     0, 3.3),   # index 10
+    ("Analog_In_3",     "V",     0, 3.3),   # index 11
+    ("Analog_In_4",     "V",     0, 3.3),   # index 12
+    ("Analog_In_5",     "V",     0, 3.3),   # index 13
+    # CH15: spare (unused)
+    ("Spare_4",         "V",     0, 3.3),   # index 14
+    # CH16–17: analog inputs (cont.)
+    ("Analog_In_6",     "V",     0, 3.3),   # index 15
+    ("Analog_In_7",     "V",     0, 3.3),   # index 16
+    # CH18: differential pressure sensor (SSCDRRN005PDAA5, 0–15 psi)
+    ("Diff_Pressure",   "psi",   0,  15),   # index 17
+    # CH19: gauge pressure sensor (SSCDANND015PGAA5, 0–150 psi)
+    ("Pressure",        "psi",   0, 150),   # index 18
+    # CH20–22: current monitors (INA4180A2, 50 V/V gain, 50 mΩ shunt)
+    ("Input_Current",   "A",     0, 1.32),  # index 19
+    ("Curr_5V",         "A",     0, 1.32),  # index 20
+    ("Curr_3V3",        "A",     0, 1.32),  # index 21
+    # CH23: 5 V rail monitor via 0.5 resistor divider (×2 to recover voltage)
+    ("Voltage_5V",      "V",     0, 6.6),   # index 22
 ]
 
 
