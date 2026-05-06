@@ -191,6 +191,13 @@ class DataAcquisitionSystem:
             self._write_obd_file()
         except Exception as exc:
             print(f"SD card unavailable: {exc}")
+            # sdcard driver reconfigures SPI0 baudrate/mode during init;
+            # reinitialise so ADC reads are not corrupted when no SD is present.
+            self.spi0 = machine.SPI(
+                0, baudrate=2_000_000, polarity=0, phase=0, bits=8,
+                sck=machine.Pin(SPI0_SCK_PIN),
+                mosi=machine.Pin(SPI0_TX_PIN),
+                miso=machine.Pin(SPI0_RX_PIN))
 
     # ------------------------------------------------------------------
     # MCP2515
