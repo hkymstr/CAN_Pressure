@@ -36,14 +36,18 @@ except ImportError:
 # ---------------------------------------------------------------------------
 
 CHANNELS = [
-    ("Temperature_1",  "C",    -40,  200),
-    ("Temperature_2",  "C",    -40,  200),
-    ("Temperature_3",  "C",    -40,  200),
-    ("Temperature_4",  "C",    -40,  200),
-    ("Temperature_5",  "C",    -40,  200),
-    ("Temperature_6",  "C",    -40,  200),
-    ("Temperature_7",  "C",    -40,  200),
-    ("Temperature_8",  "C",    -40,  200),
+    # CH1–6: thermocouple inputs (10 mV/°C amp → 0–330 °C over 0–3.3 V)
+    ("Temperature_1",  "C",      0,  330),
+    ("Temperature_2",  "C",      0,  330),
+    ("Temperature_3",  "C",      0,  330),
+    ("Temperature_4",  "C",      0,  330),
+    ("Temperature_5",  "C",      0,  330),
+    ("Temperature_6",  "C",      0,  330),
+    # CH7–9: spare MUX inputs (unconnected)
+    ("Spare_1",        "V",      0,  3.3),
+    ("Spare_2",        "V",      0,  3.3),
+    ("Spare_3",        "V",      0,  3.3),
+    # CH10–16: direct analog inputs (buffered, 0–3.3 V)
     ("Analog_In_1",    "V",      0,  3.3),
     ("Analog_In_2",    "V",      0,  3.3),
     ("Analog_In_3",    "V",      0,  3.3),
@@ -51,14 +55,18 @@ CHANNELS = [
     ("Analog_In_5",    "V",      0,  3.3),
     ("Analog_In_6",    "V",      0,  3.3),
     ("Analog_In_7",    "V",      0,  3.3),
-    ("Analog_In_8",    "V",      0,  3.3),
+    # CH17: differential pressure (SSCDRRN005PDAA5, 0–15 psi)
     ("Diff_Pressure",  "psi",    0,   15),
+    # CH18: gauge pressure (SSCDANND015PGAA5, 0–150 psi)
     ("Pressure",       "psi",    0,  150),
-    ("TBD_19",         "",       0,    0),
-    ("TBD_20",         "",       0,    0),
-    ("TBD_21",         "",       0,    0),
-    ("TBD_22",         "",       0,    0),
-    ("TBD_23",         "",       0,    0),
+    # CH19–21: current monitors (INA4180A2, 50 V/V, 50 mΩ shunt → 0–1.32 A)
+    ("Input_Current",  "A",      0, 1.32),
+    ("Curr_5V",        "A",      0, 1.32),
+    ("Curr_3V3",       "A",      0, 1.32),
+    # CH22: 5 V rail via 0.5 divider (×2 recovery → 0–6.6 V)
+    ("Voltage_5V",     "V",      0,  6.6),
+    # CH23: spare
+    ("Spare_4",        "V",      0,  3.3),
 ]
 
 NUM_CH       = len(CHANNELS)
