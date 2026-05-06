@@ -136,10 +136,10 @@ class DataAcquisitionSystem:
         self._init_pins()
         self._init_can_clock()
         self.rtc = machine.RTC()
-        self.adc_data    = [0] * NUM_CH
-        self.can_baud    = DEFAULT_BAUD
-        self.display_mode = DISP_OFF
-        self._sd_ok      = False
+        self.adc_data     = [0] * NUM_CH
+        self.can_baud     = DEFAULT_BAUD
+        self.display_mode = DISP_CSV   # send $DATA, lines by default
+        self._sd_ok       = False
         self._init_sd()
         self._init_can(self.can_baud)
         # Non-blocking stdin poll for menu trigger
