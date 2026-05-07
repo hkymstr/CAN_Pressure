@@ -88,6 +88,16 @@ IDX_TEMP1    = 0    # CH1  Temperature_1
 IDX_DIFF_P   = 17   # CH18 Diff_Pressure
 IDX_PRESS    = 18   # CH19 Pressure
 
+# Channel labels per CAN frame (4 channels × uint16 big-endian = 8 bytes each)
+_CAN_FRAME_LABELS = [
+    "Temp_1..4",
+    "Temp_5..6, Spare_1..2",
+    "Spare_3, Analog_1..3",
+    "Analog_4..5, Spare_4, V_3V3",
+    "Analog_6, dP, P, I_in",
+    "I_5V, I_3V3, V_5V, pad",
+]
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -108,6 +118,21 @@ def compute_power(scaled_vals):
     p5   = v5  * i5  if (v5  is not None and i5  is not None) else None
     p3   = v3  * i3  if (v3  is not None and i3  is not None) else None
     return p5, p3
+
+
+def format_can_frames(raw_vals):
+    """Reconstruct 6 CAN frames (0x200–0x205) from raw ADC values as displayable tuples."""
+    frames = []
+    for msg_idx in range(6):
+        payload = []
+        for j in range(4):
+            ch = msg_idx * 4 + j
+            val = int(raw_vals[ch]) if ch < NUM_CH else 0
+            payload.append((val >> 8) & 0xFF)
+            payload.append(val & 0xFF)
+        hex_str = " ".join(f"{b:02X}" for b in payload)
+        frames.append((f"0x{0x200 + msg_idx:03X}", hex_str, _CAN_FRAME_LABELS[msg_idx]))
+    return frames
 
 
 def list_ports():
@@ -168,6 +193,11 @@ def print_live_table(timestamp, raw_vals):
     p3_str = f"{p3:10.3f}" if p3 is not None else f"{'---':>10}"
     print(f"  {'':2}  {'Power_5V':<18}  {'':>5}  {p5_str}  W")
     print(f"  {'':2}  {'Power_3V3':<18}  {'':>5}  {p3_str}  W")
+    print(dash)
+    print(f"  CAN Bus Stream  (0x200–0x205 @ 500 kbps, 4 ch × uint16 big-endian)")
+    print(dash)
+    for can_id_str, hex_str, label in format_can_frames(raw_vals):
+        print(f"  {can_id_str}  {hex_str}  {label}")
     print(sep)
 
 
@@ -262,6 +292,9 @@ def run(port, baud, output_file, quiet, full_screen):
                             print_live_table(timestamp, raw_vals)
                         else:
                             print_live_compact(timestamp, raw_vals, row_count)
+
+                elif line.startswith("$CAN,"):
+                    pass   # CAN hex shown in full-screen table; silently absorbed here
 
                 else:
                     # Non-data line (boot message, table header, menu text)

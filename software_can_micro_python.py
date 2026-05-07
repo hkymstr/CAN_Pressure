@@ -338,6 +338,8 @@ class DataAcquisitionSystem:
                 ustruct.pack_into('>H', payload, j * 2, val)
             can_id = CAN_BASE_ID + msg_idx
             self._send_can_frame(can_id, payload)
+            hex_bytes = " ".join("{:02X}".format(b) for b in payload)
+            print("$CAN,{},0x{:03X},{}".format(ts, can_id, hex_bytes))
             self._log_can_row(ts, can_id, payload)
             utime.sleep_ms(1)   # brief gap between frames
 
