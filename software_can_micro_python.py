@@ -128,9 +128,10 @@ _OBD_CHANNELS = [
     ("Analog_In_5",     "V",     0, 3.3),   # index 13
     # CH15: spare (unused)
     ("Spare_4",         "V",     0, 3.3),   # index 14
-    # CH16–17: analog inputs (cont.)
-    ("Analog_In_6",     "V",     0, 3.3),   # index 15
-    ("Analog_In_7",     "V",     0, 3.3),   # index 16
+    # CH16: 3.3 V rail monitor via 0.5 resistor divider (×2 to recover voltage)
+    ("Voltage_3V3",     "V",     0, 6.6),   # index 15
+    # CH17: analog input (cont.)
+    ("Analog_In_6",     "V",     0, 3.3),   # index 16
     # CH18: differential pressure sensor (SSCDRRN005PDAA5, 0–15 psi)
     ("Diff_Pressure",   "psi",   0,  15),   # index 17
     # CH19: gauge pressure sensor (SSCDANND015PGAA5, 0–150 psi)
@@ -398,14 +399,28 @@ class DataAcquisitionSystem:
         print(sep)
         print(f"  {'CH':>2}  {'Channel':<18}  {'Raw':>5}  {'Value':>9}  Unit")
         print(dash)
+        scaled = []
         for i, (name, unit, mn, mx) in enumerate(_OBD_CHANNELS):
             raw = self.adc_data[i]
             if mx != mn:
-                scaled = mn + (raw / 4095.0) * (mx - mn)
-                val_str = f"{scaled:9.2f}"
+                v = mn + (raw / 4095.0) * (mx - mn)
+                scaled.append(v)
+                val_str = f"{v:9.2f}"
             else:
+                scaled.append(None)
                 val_str = f"{'---':>9}"
             print(f"  {i+1:>2}  {name:<18}  {raw:>5}  {val_str}  {unit}")
+        print(dash)
+        # Derived power (V × I) for 5 V and 3.3 V rails
+        # Indices: Voltage_5V=22, Curr_5V=20, Voltage_3V3=15, Curr_3V3=21
+        v5  = scaled[22]; i5  = scaled[20]
+        v3  = scaled[15]; i3  = scaled[21]
+        p5  = v5 * i5 if (v5 is not None and i5 is not None) else None
+        p3  = v3 * i3 if (v3 is not None and i3 is not None) else None
+        p5s = f"{p5:9.3f}" if p5 is not None else f"{'---':>9}"
+        p3s = f"{p3:9.3f}" if p3 is not None else f"{'---':>9}"
+        print(f"  {'':2}  {'Power_5V':<18}  {'':>5}  {p5s}  W")
+        print(f"  {'':2}  {'Power_3V3':<18}  {'':>5}  {p3s}  W")
         print(sep)
 
     def _print_csv(self):

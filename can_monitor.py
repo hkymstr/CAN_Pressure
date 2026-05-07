@@ -55,9 +55,10 @@ CHANNELS = [
     ("Analog_In_5",    "V",      0,  3.3),
     # CH15: spare (unused)
     ("Spare_4",        "V",      0,  3.3),
-    # CH16–17: analog inputs (cont.)
+    # CH16: 3.3 V rail monitor via 0.5 resistor divider (×2 to recover voltage)
+    ("Voltage_3V3",    "V",      0,  6.6),
+    # CH17: analog input (cont.)
     ("Analog_In_6",    "V",      0,  3.3),
-    ("Analog_In_7",    "V",      0,  3.3),
     # CH18: differential pressure (SSCDRRN005PDAA5, 0–15 psi)
     ("Diff_Pressure",  "psi",    0,   15),
     # CH19: gauge pressure (SSCDANND015PGAA5, 0–150 psi)
@@ -76,6 +77,17 @@ CH_UNITS     = [c[1] for c in CHANNELS]
 CH_MINS      = [c[2] for c in CHANNELS]
 CH_MAXS      = [c[3] for c in CHANNELS]
 
+# Indices used for derived power calculations
+IDX_VOLT_5V  = 22   # CH23 Voltage_5V
+IDX_CURR_5V  = 20   # CH21 Curr_5V
+IDX_VOLT_3V3 = 15   # CH16 Voltage_3V3
+IDX_CURR_3V3 = 21   # CH22 Curr_3V3
+
+# Compact display indices (updated to match current channel map)
+IDX_TEMP1    = 0    # CH1  Temperature_1
+IDX_DIFF_P   = 17   # CH18 Diff_Pressure
+IDX_PRESS    = 18   # CH19 Pressure
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -85,6 +97,17 @@ def raw_to_scaled(raw, mn, mx):
     if mx == mn:
         return None
     return mn + (int(raw) / 4095.0) * (mx - mn)
+
+
+def compute_power(scaled_vals):
+    """Return (power_5v_W, power_3v3_W) derived from voltage and current channels."""
+    v5   = scaled_vals[IDX_VOLT_5V]
+    i5   = scaled_vals[IDX_CURR_5V]
+    v3   = scaled_vals[IDX_VOLT_3V3]
+    i3   = scaled_vals[IDX_CURR_3V3]
+    p5   = v5  * i5  if (v5  is not None and i5  is not None) else None
+    p3   = v3  * i3  if (v3  is not None and i3  is not None) else None
+    return p5, p3
 
 
 def list_ports():
@@ -124,7 +147,7 @@ def auto_filename():
 _CLEAR = "\033[2J\033[H"   # ANSI clear screen + cursor home
 
 def print_live_table(timestamp, raw_vals):
-    """Render a full-screen table of all 23 channels."""
+    """Render a full-screen table of all 23 channels plus derived power rows."""
     sep  = "=" * 62
     dash = "-" * 62
     print(_CLEAR, end="")
@@ -133,24 +156,36 @@ def print_live_table(timestamp, raw_vals):
     print(sep)
     print(f"  {'CH':>2}  {'Channel':<18}  {'Raw':>5}  {'Value':>10}  Unit")
     print(dash)
+    scaled_vals = [raw_to_scaled(raw_vals[i], CH_MINS[i], CH_MAXS[i])
+                   for i in range(NUM_CH)]
     for i, raw in enumerate(raw_vals):
-        mn, mx = CH_MINS[i], CH_MAXS[i]
-        scaled = raw_to_scaled(raw, mn, mx)
+        scaled  = scaled_vals[i]
         val_str = f"{scaled:10.3f}" if scaled is not None else f"{'---':>10}"
         print(f"  {i+1:>2}  {CH_NAMES[i]:<18}  {int(raw):>5}  {val_str}  {CH_UNITS[i]}")
+    print(dash)
+    p5, p3 = compute_power(scaled_vals)
+    p5_str = f"{p5:10.3f}" if p5 is not None else f"{'---':>10}"
+    p3_str = f"{p3:10.3f}" if p3 is not None else f"{'---':>10}"
+    print(f"  {'':2}  {'Power_5V':<18}  {'':>5}  {p5_str}  W")
+    print(f"  {'':2}  {'Power_3V3':<18}  {'':>5}  {p3_str}  W")
     print(sep)
 
 
 def print_live_compact(timestamp, raw_vals, row_count):
     """One-line summary printed inline (for non-ANSI terminals)."""
-    temp1   = raw_to_scaled(raw_vals[0],  CH_MINS[0],  CH_MAXS[0])
-    dp      = raw_to_scaled(raw_vals[16], CH_MINS[16], CH_MAXS[16])
-    press   = raw_to_scaled(raw_vals[17], CH_MINS[17], CH_MAXS[17])
-    t_str   = f"{temp1:6.1f}°C"  if temp1  is not None else "  ---  "
-    dp_str  = f"{dp:5.2f}psi"    if dp     is not None else " --- "
-    p_str   = f"{press:6.1f}psi" if press  is not None else "  ---  "
-    print(f"\r{timestamp}  T1={t_str}  DiffP={dp_str}  P={p_str}  "
-          f"[{row_count} rows]", end="", flush=True)
+    scaled = [raw_to_scaled(raw_vals[i], CH_MINS[i], CH_MAXS[i]) for i in range(NUM_CH)]
+    temp1  = scaled[IDX_TEMP1]
+    dp     = scaled[IDX_DIFF_P]
+    press  = scaled[IDX_PRESS]
+    p5, p3 = compute_power(scaled)
+    t_str  = f"{temp1:5.1f}C"   if temp1 is not None else "  --- "
+    dp_str = f"{dp:5.2f}psi"    if dp    is not None else " ---  "
+    p_str  = f"{press:6.1f}psi" if press is not None else "  --- "
+    p5_str = f"{p5:5.2f}W"      if p5   is not None else " ---  "
+    p3_str = f"{p3:5.2f}W"      if p3   is not None else " ---  "
+    print(f"\r{timestamp}  T1={t_str}  dP={dp_str}  P={p_str}  "
+          f"P5={p5_str}  P3={p3_str}  [{row_count}]",
+          end="", flush=True)
 
 
 # ---------------------------------------------------------------------------
@@ -176,7 +211,8 @@ def run(port, baud, output_file, quiet, full_screen):
         # Header: Timestamp + one column per channel (raw) + one per channel (scaled)
         raw_header    = [f"{n}_raw" for n in CH_NAMES]
         scaled_header = [f"{n}_{u}" if u else n for n, u, *_ in CHANNELS]
-        writer.writerow(["Timestamp"] + raw_header + scaled_header)
+        writer.writerow(["Timestamp"] + raw_header + scaled_header +
+                        ["Power_5V_W", "Power_3V3_W"])
         f.flush()
 
         try:
@@ -212,8 +248,12 @@ def run(port, baud, output_file, quiet, full_screen):
                     scaled_strs = [
                         f"{v:.4f}" if v is not None else "" for v in scaled_vals
                     ]
+                    p5, p3 = compute_power(scaled_vals)
+                    p5_str = f"{p5:.4f}" if p5 is not None else ""
+                    p3_str = f"{p3:.4f}" if p3 is not None else ""
 
-                    writer.writerow([timestamp] + raw_vals + scaled_strs)
+                    writer.writerow([timestamp] + raw_vals + scaled_strs +
+                                    [p5_str, p3_str])
                     f.flush()
                     row_count += 1
 
