@@ -47,18 +47,18 @@ CHANNELS = [
     ("Spare_1",        "V",      0,  3.3),
     ("Spare_2",        "V",      0,  3.3),
     ("Spare_3",        "V",      0,  3.3),
-    # CH10–14: analog inputs
-    ("Analog_In_1",    "V",      0,  3.3),
-    ("Analog_In_2",    "V",      0,  3.3),
-    ("Analog_In_3",    "V",      0,  3.3),
-    ("Analog_In_4",    "V",      0,  3.3),
-    ("Analog_In_5",    "V",      0,  3.3),
+    # CH10–14: analog inputs (0.5 resistor divider → ×2 → 0–6.6 V)
+    ("Analog_In_1",    "V",      0,  6.6),
+    ("Analog_In_2",    "V",      0,  6.6),
+    ("Analog_In_3",    "V",      0,  6.6),
+    ("Analog_In_4",    "V",      0,  6.6),
+    ("Analog_In_5",    "V",      0,  6.6),
     # CH15: spare (unused)
     ("Spare_4",        "V",      0,  3.3),
     # CH16: 3.3 V rail monitor via 0.5 resistor divider (×2 to recover voltage)
     ("Voltage_3V3",    "V",      0,  6.6),
-    # CH17: analog input (cont.)
-    ("Analog_In_6",    "V",      0,  3.3),
+    # CH17: analog input (cont., 0.5 resistor divider → ×2 → 0–6.6 V)
+    ("Analog_In_6",    "V",      0,  6.6),
     # CH18: differential pressure, 0.5–4.5 V output, 2.5 V = 0 psid, ±30 psi span
     #       1 kΩ/590 Ω divider → k=0.37107; at 2.5 V sensor → 0.927 V ADC (raw≈1151)
     ("Diff_Pressure",  "psi",  -37.5,  95.898),
