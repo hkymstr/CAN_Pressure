@@ -142,8 +142,8 @@ _OBD_CHANNELS = [
     # CH18: differential pressure, 0.5–4.5 V output, 2.5 V = 0 psid, ±30 psi span
     #       1 kΩ/590 Ω divider → k=0.37107; at 2.5 V sensor → 0.927 V ADC (raw≈1151)
     ("Diff_Pressure",   "psi", -37.5, 95.898),   # index 17
-    # CH19: gauge pressure sensor (SSCDANND015PGAA5, 0–150 psi)
-    ("Pressure",        "psi",   0, 150),   # index 18
+    # CH19: gauge pressure sensor, 0.5–4.5 V output, 0–15 psi, ≈3.3/4.5 divider
+    ("Pressure",        "psi",  -1.875, 15.0),   # index 18
     # CH20–22: current monitors (INA4180A2, 50 V/V gain, 50 mΩ shunt)
     ("Input_Current",   "A",     0, 1.32),  # index 19
     ("Curr_5V",         "A",     0, 1.32),  # index 20
