@@ -60,7 +60,8 @@ CHANNELS = [
     # CH17: analog input (cont.)
     ("Analog_In_6",    "V",      0,  3.3),
     # CH18: differential pressure, 0.5–4.5 V output, 2.5 V = 0 psid, ±30 psi span
-    ("Diff_Pressure",  "psi",  -30,   30),
+    #       1 kΩ/590 Ω divider → k=0.37107; at 2.5 V sensor → 0.927 V ADC (raw≈1151)
+    ("Diff_Pressure",  "psi",  -37.5,  95.898),
     # CH19: gauge pressure (SSCDANND015PGAA5, 0–150 psi)
     ("Pressure",       "psi",    0,  150),
     # CH20–22: current monitors (INA4180A2, 50 V/V, 50 mΩ shunt → 0–1.32 A)
