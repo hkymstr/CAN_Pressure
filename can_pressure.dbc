@@ -1,0 +1,43 @@
+VERSION ""
+
+NS_ :
+
+BS_:
+
+BU_:
+
+BO_ 512 Temperatures_1_4: 8 Vector__XXX
+ SG_ Temperature_1 : 7|16@1+ (0.080586,0) [0|330] "C" Vector__XXX
+ SG_ Temperature_2 : 23|16@1+ (0.080586,0) [0|330] "C" Vector__XXX
+ SG_ Temperature_3 : 39|16@1+ (0.080586,0) [0|330] "C" Vector__XXX
+ SG_ Temperature_4 : 55|16@1+ (0.080586,0) [0|330] "C" Vector__XXX
+
+BO_ 513 Temperatures_5_6_Spare_1_2: 8 Vector__XXX
+ SG_ Temperature_5 : 7|16@1+ (0.080586,0) [0|330] "C" Vector__XXX
+ SG_ Temperature_6 : 23|16@1+ (0.080586,0) [0|330] "C" Vector__XXX
+ SG_ Spare_1 : 39|16@1+ (0.00080586,0) [0|3.3] "V" Vector__XXX
+ SG_ Spare_2 : 55|16@1+ (0.00080586,0) [0|3.3] "V" Vector__XXX
+
+BO_ 514 Spare_3_Analog_1_3: 8 Vector__XXX
+ SG_ Spare_3 : 7|16@1+ (0.00080586,0) [0|3.3] "V" Vector__XXX
+ SG_ Analog_In_1 : 23|16@1+ (0.00080586,0) [0|3.3] "V" Vector__XXX
+ SG_ Analog_In_2 : 39|16@1+ (0.00080586,0) [0|3.3] "V" Vector__XXX
+ SG_ Analog_In_3 : 55|16@1+ (0.00080586,0) [0|3.3] "V" Vector__XXX
+
+BO_ 515 Analog_4_5_Spare_4_V3V3: 8 Vector__XXX
+ SG_ Analog_In_4 : 7|16@1+ (0.00080586,0) [0|3.3] "V" Vector__XXX
+ SG_ Analog_In_5 : 23|16@1+ (0.00080586,0) [0|3.3] "V" Vector__XXX
+ SG_ Spare_4 : 39|16@1+ (0.00080586,0) [0|3.3] "V" Vector__XXX
+ SG_ Voltage_3V3 : 55|16@1+ (0.0016117,0) [0|6.6] "V" Vector__XXX
+
+BO_ 516 Analog_6_Pressure_Current: 8 Vector__XXX
+ SG_ Analog_In_6 : 7|16@1+ (0.00080586,0) [0|3.3] "V" Vector__XXX
+ SG_ Diff_Pressure : 23|16@1+ (0.0036630,0) [0|15] "psi" Vector__XXX
+ SG_ Pressure : 39|16@1+ (0.036630,0) [0|150] "psi" Vector__XXX
+ SG_ Input_Current : 55|16@1+ (0.00032234,0) [0|1.32] "A" Vector__XXX
+
+BO_ 517 Current_Voltage_5V: 8 Vector__XXX
+ SG_ Curr_5V : 7|16@1+ (0.00032234,0) [0|1.32] "A" Vector__XXX
+ SG_ Curr_3V3 : 23|16@1+ (0.00032234,0) [0|1.32] "A" Vector__XXX
+ SG_ Voltage_5V : 39|16@1+ (0.0016117,0) [0|6.6] "V" Vector__XXX
+
