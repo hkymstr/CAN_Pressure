@@ -100,6 +100,13 @@ _CAN_BAUD = {
 }
 DEFAULT_BAUD = 500
 
+# Firmware version — bump these when flashing a new build
+FW_MAJOR           = 2
+FW_MINOR           = 0
+FW_PATCH           = 0
+CAN_VERSION_ID     = 0x1FF
+CAN_VERSION_PERIOD = 10_000   # ms between periodic re-broadcasts
+
 # CAN base ID and channel count
 CAN_BASE_ID = 0x200
 NUM_CH      = 23
@@ -257,6 +264,14 @@ class DataAcquisitionSystem:
         # Normal mode
         self._can_write(MCP_CANCTRL, 0x00)
         utime.sleep_ms(1)
+
+    def _send_version_frame(self):
+        """Broadcast FW_MAJOR.FW_MINOR.FW_PATCH on 0x1FF."""
+        ts      = self._timestamp()
+        payload = bytearray([FW_MAJOR, FW_MINOR, FW_PATCH, 0, 0, 0, 0, 0])
+        self._send_can_frame(CAN_VERSION_ID, payload)
+        hex_bytes = " ".join("{:02X}".format(b) for b in payload)
+        print("$CAN,{},0x{:03X},{}".format(ts, CAN_VERSION_ID, hex_bytes))
 
     def _send_can_frame(self, can_id, data):
         """Load and transmit one standard CAN frame via TX buffer 0."""
@@ -517,11 +532,14 @@ class DataAcquisitionSystem:
     # ------------------------------------------------------------------
 
     def run(self):
-        print("CAN Pressure Board v2 — running.  Press Enter for menu.")
+        print("CAN Pressure Board v{}.{}.{} — running.  Press Enter for menu.".format(
+            FW_MAJOR, FW_MINOR, FW_PATCH))
         print(f"Display mode: {_DISP_NAMES[self.display_mode]}  |  CAN: {self.can_baud} kbps  |  SD: {'OK' if self._sd_ok else 'none'}")
+        self._send_version_frame()   # announce version immediately on boot
         t_sample  = utime.ticks_ms()
         t_can_tx  = utime.ticks_ms()
         t_display = utime.ticks_ms()
+        t_version = utime.ticks_ms()
 
         while True:
             now = utime.ticks_ms()
@@ -534,6 +552,7 @@ class DataAcquisitionSystem:
                     t_sample  = utime.ticks_ms()
                     t_can_tx  = utime.ticks_ms()
                     t_display = utime.ticks_ms()
+                    t_version = utime.ticks_ms()
                     continue
 
             # Sample at 5 Hz
@@ -545,6 +564,11 @@ class DataAcquisitionSystem:
             if utime.ticks_diff(now, t_can_tx) >= CAN_TX_PERIOD:
                 self.send_telemetry()
                 t_can_tx = utime.ticks_add(t_can_tx, CAN_TX_PERIOD)
+
+            # Re-broadcast firmware version every 10 s
+            if utime.ticks_diff(now, t_version) >= CAN_VERSION_PERIOD:
+                self._send_version_frame()
+                t_version = utime.ticks_add(t_version, CAN_VERSION_PERIOD)
 
             # Display telemetry at 1 Hz
             if self.display_mode != DISP_OFF:

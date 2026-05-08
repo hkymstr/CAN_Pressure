@@ -171,13 +171,14 @@ def auto_filename():
 
 _CLEAR = "\033[2J\033[H"   # ANSI clear screen + cursor home
 
-def print_live_table(timestamp, raw_vals):
+def print_live_table(timestamp, raw_vals, fw_version=None):
     """Render a full-screen table of all 23 channels plus derived power rows."""
     sep  = "=" * 62
     dash = "-" * 62
     print(_CLEAR, end="")
     print(sep)
-    print(f"  CAN Pressure Board  |  {timestamp}")
+    ver_str = f"  |  FW {fw_version}" if fw_version else ""
+    print(f"  CAN Pressure Board  |  {timestamp}{ver_str}")
     print(sep)
     print(f"  {'CH':>2}  {'Channel':<18}  {'Raw':>5}  {'Value':>10}  Unit")
     print(dash)
@@ -234,7 +235,8 @@ def run(port, baud, output_file, quiet, full_screen):
         print(f"Display:    {mode}")
     print("Press Ctrl-C to stop.\n")
 
-    row_count = 0
+    row_count  = 0
+    fw_version = None
 
     with open(output_file, "w", newline="") as f:
         writer = csv.writer(f)
@@ -289,12 +291,19 @@ def run(port, baud, output_file, quiet, full_screen):
 
                     if not quiet:
                         if full_screen:
-                            print_live_table(timestamp, raw_vals)
+                            print_live_table(timestamp, raw_vals, fw_version)
                         else:
                             print_live_compact(timestamp, raw_vals, row_count)
 
                 elif line.startswith("$CAN,"):
-                    pass   # CAN hex shown in full-screen table; silently absorbed here
+                    parts = line[5:].split(",", 2)
+                    if len(parts) == 3 and parts[1].strip() == "0x1FF":
+                        try:
+                            hb = parts[2].strip().split()
+                            fw_version = "v{}.{}.{}".format(
+                                int(hb[0], 16), int(hb[1], 16), int(hb[2], 16))
+                        except (IndexError, ValueError):
+                            pass
 
                 else:
                     # Non-data line (boot message, table header, menu text)

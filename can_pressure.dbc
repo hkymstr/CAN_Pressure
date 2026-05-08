@@ -6,6 +6,11 @@ BS_:
 
 BU_:
 
+BO_ 511 FW_Version: 8 Vector__XXX
+ SG_ FW_Major : 7|8@1+ (1,0) [0|255] "" Vector__XXX
+ SG_ FW_Minor : 15|8@1+ (1,0) [0|255] "" Vector__XXX
+ SG_ FW_Patch : 23|8@1+ (1,0) [0|255] "" Vector__XXX
+
 BO_ 512 Temperatures_1_4: 8 Vector__XXX
  SG_ Temperature_1 : 7|16@1+ (0.080586,0) [0|330] "C" Vector__XXX
  SG_ Temperature_2 : 23|16@1+ (0.080586,0) [0|330] "C" Vector__XXX
