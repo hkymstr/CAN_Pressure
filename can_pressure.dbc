@@ -37,7 +37,7 @@ BO_ 515 Analog_4_5_Spare_4_V3V3: 8 Vector__XXX
 
 BO_ 516 Analog_6_Pressure_Current: 8 Vector__XXX
  SG_ Analog_In_6 : 7|16@1+ (0.00080586,0) [0|3.3] "V" Vector__XXX
- SG_ Diff_Pressure : 23|16@1+ (0.0036630,0) [0|15] "psi" Vector__XXX
+ SG_ Diff_Pressure : 23|16@1+ (0.014652,-30) [-30|30] "psi" Vector__XXX
  SG_ Pressure : 39|16@1+ (0.036630,0) [0|150] "psi" Vector__XXX
  SG_ Input_Current : 55|16@1+ (0.00032234,0) [0|1.32] "A" Vector__XXX
 

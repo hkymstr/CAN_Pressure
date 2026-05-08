@@ -139,8 +139,8 @@ _OBD_CHANNELS = [
     ("Voltage_3V3",     "V",     0, 6.6),   # index 15
     # CH17: analog input (cont.)
     ("Analog_In_6",     "V",     0, 3.3),   # index 16
-    # CH18: differential pressure sensor (SSCDRRN005PDAA5, 0–15 psi)
-    ("Diff_Pressure",   "psi",   0,  15),   # index 17
+    # CH18: differential pressure sensor, 0.5–4.5 V output, 2.5 V = 0 psid, ±30 psi span
+    ("Diff_Pressure",   "psi", -30, 30),   # index 17
     # CH19: gauge pressure sensor (SSCDANND015PGAA5, 0–150 psi)
     ("Pressure",        "psi",   0, 150),   # index 18
     # CH20–22: current monitors (INA4180A2, 50 V/V gain, 50 mΩ shunt)
