@@ -1,0 +1,143 @@
+* =============================================================
+* 3-Channel K-Type Thermocouple Thermometer
+* Reference Circuit: Linear Technology LT1014 Application Note
+*
+*  VCC:         5 V single supply
+*  CJC:         LT1004 1.2 V ref + YSI 44007 NTC (5 kΩ @ 25 °C)
+*  Amplifier:   LT1014 quad op-amp (4 sections used)
+*  Gain:        −1 MΩ / 4 kΩ = −250  (inverting)
+*  Sensitivity: 250 × 41.27 µV/°C ≈ 10.3 mV/°C (K-type TC)
+*  CJC range:   ±1 °C accuracy, 0 °C to 60 °C
+* =============================================================
+
+* ========================= PARAMETERS =======================
+.param TAMB    = 25        ; Ambient / cold-junction temp [°C]
+.param dT_A    = 50        ; Ch A: hot-junction ΔT above TAMB [°C]
+.param dT_B    = 100       ; Ch B: hot-junction ΔT above TAMB [°C]
+.param dT_C    = 200       ; Ch C: hot-junction ΔT above TAMB [°C]
+
+* YSI 44007 NTC thermistor parameters
+.param NTC_R25 = 5000      ; Resistance at 25 °C [Ω]
+.param NTC_B   = 3974      ; Beta coefficient [K]
+.func  NTC(T)  {NTC_R25 * exp(NTC_B * (1/(T+273.15) - 1/298.15))}
+
+* K-type thermocouple Seebeck coefficient
+.param Sk      = 41.27e-6  ; V/°C (linear approximation, valid 0–400 °C)
+
+* ========================== POWER ===========================
+VVCC  VCC  0  DC 5
+
+* =============== LT1004 1.2 V REFERENCE NETWORK =============
+*  5V --[3k]-- NBIAS --[299k]-- NREF  (LT1004 clamps NREF = 1.2 V)
+*  NBIAS also feeds the CJC thermistor bridge via 1684 Ω
+R_bias1  VCC    NBIAS  3k
+R_bias2  NBIAS  NREF   299k
+V_LT1004 NREF   0      DC 1.2    ; LT1004: modeled as ideal 1.2 V source
+
+* ============= CJC THERMISTOR BRIDGE ========================
+*  NBIAS --[1684]-- NCJCT --[260]-- GND
+*                   NCJCT --[YSI44007(TAMB)]-- NCJCB --[1800]-- GND
+*  CJC buffer input = NCJCT; its output (VCJC) becomes the TC− reference
+R_cjc1  NBIAS  NCJCT         1684
+R_cjc2  NCJCT  0             260
+R_ntc   NCJCT  NCJCB         {NTC(TAMB)}    ; YSI 44007 resistance at TAMB
+R_cjc3  NCJCB  0             1800
+
+* ============= CJC UNITY-GAIN BUFFER (Op-Amp D) =============
+*  LT1014 Op-Amp D — pins: IN+ = 12, IN− = 13, OUT = 14
+*  Voltage follower: OUT fed back to IN−; drives TC− reference node VCJC
+*  Subcircuit call: (INP, INM, VCC, VEE, OUT)
+XU_D  NCJCT  VCJC  VCC  0  VCJC  OA_IDEAL
+
+* ============= THERMOCOUPLE VOLTAGE SOURCES =================
+*  TC modeled as series EMF = Seebeck × ΔT
+*  TC+ (hot junction) → 4k input resistor → amplifier IN−
+*  TC− (cold junction) → VCJC (cold-junction compensation node)
+VTC_A  TCA  VCJC  {Sk * dT_A}
+VTC_B  TCB  VCJC  {Sk * dT_B}
+VTC_C  TCC  VCJC  {Sk * dT_C}
+
+* ============= OUTPUT A — INVERTING AMPLIFIER ===============
+*  LT1014 Op-Amp A — pins: IN− = 2, IN+ = 3, OUT = 1
+*  Gain = −Rf/Rin = −1 MΩ / 4 kΩ = −250
+*  V(OUTA) = V(VCJC) − 250 × V_TC_EMF
+*          ≈ V(VCJC) − 10.32 mV/°C × dT_A
+R_inA  TCA    NINVA  4k
+R_fbA  NINVA  OUTA   1Meg
+XU_A   NINVA  VCJC   VCC  0  OUTA  OA_IDEAL
+
+* ============= OUTPUT B — CHANNEL B =========================
+*  LT1014 Op-Amp B — pins: IN− = 6, IN+ = 5, OUT = 7
+R_inB  TCB    NINVB  4k
+R_fbB  NINVB  OUTB   1Meg
+XU_B   NINVB  VCJC   VCC  0  OUTB  OA_IDEAL
+
+* ============= OUTPUT C — CHANNEL C =========================
+*  LT1014 Op-Amp C — pins: IN− = 9, IN+ = 10, OUT = 8
+R_inC  TCC    NINVC  4k
+R_fbC  NINVC  OUTC   1Meg
+XU_C   NINVC  VCJC   VCC  0  OUTC  OA_IDEAL
+
+* ========= IDEAL OP-AMP SUBCIRCUIT (approximates LT1014) ====
+*  Open-loop gain: 100 dB (1×10⁵ V/V)
+*  Single-supply, rail-to-rail: output limited to VEE+50mV … VCC−50mV
+*  Output impedance: 100 Ω
+*
+*  To use the real LT1014 SPICE model from LTSpice's library:
+*    1. Delete the .subckt block below
+*    2. Add at top:  .lib LT1014.sub  (or let LTSpice auto-resolve)
+*    3. Replace every  OA_IDEAL  instance name suffix with  LT1014
+*       and verify the pin order matches (INP INM VCC VEE OUT)
+.subckt OA_IDEAL  INP  INM  VCC  VEE  OUT
+E_oa   EINT  0  VALUE {LIMIT(1e5*(V(INP)-V(INM)), V(VEE)+0.05, V(VCC)-0.05)}
+R_out  EINT  OUT  100
+.ends OA_IDEAL
+
+* ======================== SIMULATION ========================
+*
+* CHOOSE ONE simulation block (uncomment the desired block):
+*
+* ---- Sim 1: DC Operating Point --------------------------------
+*  Verify bias voltages: NBIAS, NREF (1.2V), NCJCT, VCJC
+*  and output levels OUTA/OUTB/OUTC at TAMB=25°C, dT_A=50°C
+.op
+*
+* ---- Sim 2: Gain verification (sweep Ch A TC EMF) -------------
+*  Slope of V(OUTA) vs VTC_A should be −250 V/V
+*  At output: −10.32 mV/°C × dT_A
+*  Uncomment the two lines below and comment out .op above:
+* .dc VTC_A 0 8.254m 82.54u   ; 0 to 200 °C equivalent (step = 2 °C)
+* .probe V(OUTA) V(VCJC)
+*
+* ---- Sim 3: CJC compensation (family of curves) ---------------
+*  Combines with Sim 2 to show ambient temperature stability.
+*  If CJC works correctly all curves should overlap (±1 °C).
+*  Add this line alongside Sim 2 (or .op):
+* .step param TAMB 0 60 10    ; ambient 0 °C to 60 °C in 10 °C steps
+*
+* ---- Sim 4: Transient (optional — add TC step response) -------
+* VTC_A_step  TCAS  VCJC  PULSE(0 2.06m 1m 1n 1n 10m 20m)
+* R_inAs  TCAS  NINVA  4k   (replace R_inA above)
+* .tran 1u 30m
+
+* ========================= PROBES ===========================
+.probe V(OUTA) V(OUTB) V(OUTC)
+.probe V(VCJC)
+.probe V(NCJCT) V(NCJCB)
+.probe V(NBIAS) V(NREF)
+
+* ====================== EXPECTED VALUES =====================
+* At TAMB=25°C, dT_A=50°C, dT_B=100°C, dT_C=200°C:
+*
+*   V(NREF)   = 1.200 V   (LT1004 clamp)
+*   V(NBIAS)  ≈ 1.254 V   (3k/299k divider from 5V to 1.2V)
+*   V(NCJCT)  ≈ 0.xxx V   (depends on thermistor divider at 25°C)
+*   V(VCJC)   = V(NCJCT)  (unity-gain buffer)
+*
+*   V_TC_A_emf = 41.27µV × 50°C = 2.064 mV
+*   V(OUTA) = V(VCJC) − 250 × 2.064mV = V(VCJC) − 0.516 V
+*
+*   Gain check: ΔV(OUTA)/ΔV_TC = −250 V/V
+*               ΔV(OUTA)/Δ(dT_A) = −10.32 mV/°C
+
+.end
