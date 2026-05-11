@@ -263,8 +263,9 @@ class DataAcquisitionSystem:
         self._can_write(MCP_CNF2, cnf2)
         self._can_write(MCP_CNF1, cnf1)
 
-        # Normal mode
-        self._can_write(MCP_CANCTRL, 0x00)
+        # Loopback mode (0x40) for bench testing without a second CAN node.
+        # Change to 0x00 for normal mode once a CAN bus with termination is present.
+        self._can_write(MCP_CANCTRL, 0x40)
         utime.sleep_ms(1)
 
     def _send_version_frame(self):
